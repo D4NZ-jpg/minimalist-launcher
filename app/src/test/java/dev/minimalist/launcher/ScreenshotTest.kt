@@ -7,11 +7,17 @@ import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -79,6 +85,25 @@ class ScreenshotTest {
         rule.mainClock.advanceTimeBy(600)
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
+
+    /** While the app list opens or closes, home and the list are both on screen; afterwards only one is. */
+    private fun checkTransition(opening: Boolean) {
+        var drawer by mutableStateOf(!opening)
+        rule.mainClock.autoAdvance = false
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showDrawer = drawer, swipe = SwipeDir.Left), LauncherActions()) } }
+        rule.mainClock.advanceTimeBy(1000)
+        drawer = opening
+        // Querying between frames lets the test clock apply the pending composition.
+        repeat(8) { rule.mainClock.advanceTimeByFrame(); rule.onAllNodesWithText("Files").fetchSemanticsNodes() }
+        // Mid-transition both screens are composed: "Files" is on home and in the list, "Search apps" only in the list.
+        assertTrue(rule.onAllNodesWithText("Search apps").fetchSemanticsNodes().isNotEmpty())
+        assertEquals(2, rule.onAllNodesWithText("Files").fetchSemanticsNodes().size)
+        rule.mainClock.advanceTimeBy(1000)
+        if (opening) assertEquals(1, rule.onAllNodesWithText("Files").fetchSemanticsNodes().size) else assertTrue(rule.onAllNodesWithText("Search apps").fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test fun openingAnimatesBetweenHomeAndList() = checkTransition(true)
+    @Test fun closingAnimatesBetweenListAndHome() = checkTransition(false)
 
     @Test fun sheetApp() = shotLongPress("sheet_app", base, "Calendar")
     @Test fun sheetFolder() = shotLongPress("sheet_folder", base.copy(showDrawer = true), "Money")

@@ -6,6 +6,14 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
 import android.os.Bundle
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.togetherWith
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -76,6 +84,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+
+private enum class Screen { Home, Drawer, Settings }
 
 internal val Bg = Color(0xFF0B0B0B)
 private val LocalTextScale = compositionLocalOf { 1f }
@@ -186,11 +196,42 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             }
             .statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
     ) {
-        CompositionLocalProvider(LocalTextScale provides s.textSize.scale) { when {
-            s.showSettings -> SettingsScreen(s, a)
-            s.showDrawer -> Drawer(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
-            else -> Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
-        } }
+        val screen = when { s.showSettings -> Screen.Settings; s.showDrawer -> Screen.Drawer; else -> Screen.Home }
+        // The app list enters from the side the swipe came from, and leaves the opposite way.
+        val openDir = when (s.swipe) {
+            SwipeDir.Up -> AnimatedContentTransitionScope.SlideDirection.Up
+            SwipeDir.Left -> AnimatedContentTransitionScope.SlideDirection.Left
+            SwipeDir.Right -> AnimatedContentTransitionScope.SlideDirection.Right
+        }
+        val closeDir = when (s.swipe) {
+            SwipeDir.Up -> AnimatedContentTransitionScope.SlideDirection.Down
+            SwipeDir.Left -> AnimatedContentTransitionScope.SlideDirection.Right
+            SwipeDir.Right -> AnimatedContentTransitionScope.SlideDirection.Left
+        }
+        CompositionLocalProvider(LocalTextScale provides s.textSize.scale) {
+            AnimatedContent(
+                targetState = screen, label = "screen",
+                transitionSpec = {
+                    val t = when {
+                        initialState == Screen.Home && targetState == Screen.Drawer ->
+                            (slideIntoContainer(openDir, tween(320, easing = FastOutSlowInEasing)) + fadeIn(tween(200))) togetherWith fadeOut(tween(220))
+                        initialState == Screen.Drawer && targetState == Screen.Home ->
+                            fadeIn(tween(220)) togetherWith (slideOutOfContainer(closeDir, tween(280, easing = FastOutSlowInEasing)) + fadeOut(tween(280)))
+                        else -> fadeIn(tween(160)) togetherWith fadeOut(tween(120))
+                    }
+                    t.targetContentZIndex = if (targetState == Screen.Drawer) 1f else 0f
+                    t
+                },
+            ) { sc ->
+                Box(Modifier.fillMaxSize().background(Bg)) {
+                    when (sc) {
+                        Screen.Settings -> SettingsScreen(s, a)
+                        Screen.Drawer -> Drawer(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
+                        Screen.Home -> Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
+                    }
+                }
+            }
+        }
 
         if (s.showSwipeHint && !s.showDrawer && !s.showSettings) when (s.swipe) {
             SwipeDir.Left -> Icon(Icons.Default.KeyboardArrowLeft, "Swipe left for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterEnd))
