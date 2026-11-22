@@ -192,7 +192,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             else -> Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
         } }
 
-        if (!s.showDrawer && !s.showSettings) when (s.swipe) {
+        if (s.showSwipeHint && !s.showDrawer && !s.showSettings) when (s.swipe) {
             SwipeDir.Left -> Icon(Icons.Default.KeyboardArrowLeft, "Swipe left for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterEnd))
             SwipeDir.Right -> Icon(Icons.Default.KeyboardArrowRight, "Swipe right for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterStart))
             SwipeDir.Up -> Unit
@@ -278,7 +278,7 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
             s.homeFolders.forEach { f -> FolderBlock(f, f.name in expanded, sz(20), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
             if (s.favourites.isEmpty() && s.homeFolders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
         }
-        if (s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterHorizontally))
+        if (s.showSwipeHint && s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterHorizontally))
         Text(
             s.usage, color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().then(if (s.usageGranted) Modifier else Modifier.clickable { a.openUsageAccess() }).padding(bottom = 12.dp)
@@ -358,7 +358,6 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("Empty. Long-press an app → Folder…", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
                     }
                 }
-                if (!searching && s.folders.isNotEmpty()) item(key = "divider") { Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.12f))) }
                 items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
             }
             if (!searching) AlphabetBar(letters, Modifier.align(Alignment.CenterVertically)) { letter ->
@@ -393,8 +392,10 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
                 SectionLabel("Display")
                 SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }) }
                 ChoiceRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
+                SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }) }
                 SectionLabel("Gestures")
                 ChoiceRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
+                SettingRow("Show swipe hint", "A faint arrow showing where to swipe", onClick = { a.setShowSwipeHint(!s.showSwipeHint) }) { Switch(s.showSwipeHint, { a.setShowSwipeHint(it) }) }
                 SectionLabel("Permissions")
                 SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
                 SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }
