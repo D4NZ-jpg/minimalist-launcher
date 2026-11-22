@@ -257,13 +257,15 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
         // Scrolls when favourites + folders overflow. Disabled for swipe-up, where a vertical
         // scroller would swallow the gesture that opens the app list.
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState(), enabled = s.swipe != SwipeDir.Up).padding(top = 32.dp)) {
-            s.favourites.forEach { app ->
+            ReorderColumn(s.favourites, { it.key }, { app, d -> a.moveFavourite(app, d) }, onAppMenu) { app, drag ->
                 Text(
                     app.label, color = Color.White, fontSize = sz(20),
-                    modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { a.launch(app) }, onLongClick = { onAppMenu(app) }).padding(vertical = 9.dp, horizontal = 8.dp)
+                    modifier = Modifier.fillMaxWidth().onTap(app.key) { a.launch(app) }.then(drag).padding(vertical = 9.dp, horizontal = 8.dp)
                 )
             }
-            s.homeFolders.forEach { f -> FolderBlock(f, f.name in expanded, sz(20), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
+            ReorderColumn(s.homeFolders, { it.name }, { f, d -> a.moveHomeFolder(f.name, d) }, { onFolderMenu(it.name) }) { f, drag ->
+                FolderBlock(f, f.name in expanded, sz(20), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu, drag)
+            }
             if (s.favourites.isEmpty() && s.homeFolders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
         }
         if (s.showSwipeHint && s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -281,9 +283,9 @@ private fun toggle(list: SnapshotStateList<String>, name: String) { if (!list.re
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White) {
+private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White, drag: Modifier? = null) {
     Row(
-        Modifier.fillMaxWidth().combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) }).padding(vertical = 9.dp),
+        Modifier.fillMaxWidth().then(if (drag != null) Modifier.onTap(name, onToggle).then(drag) else Modifier.combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) })).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = color, modifier = Modifier.padding(horizontal = 8.dp))
@@ -295,9 +297,9 @@ private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.
 @Composable
 private fun FolderBlock(
     f: FolderUi, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit,
-    onLaunch: (AppEntry) -> Unit, onAppMenu: (AppEntry) -> Unit, onFolderMenu: (String) -> Unit,
+    onLaunch: (AppEntry) -> Unit, onAppMenu: (AppEntry) -> Unit, onFolderMenu: (String) -> Unit, drag: Modifier? = null,
 ) {
-    FolderHeader(f.name, open, size, onToggle, onFolderMenu)
+    FolderHeader(f.name, open, size, onToggle, onFolderMenu, drag = drag)
     if (open) {
         f.apps.forEach { app ->
             Text(

@@ -105,6 +105,44 @@ class ScreenshotTest {
     @Test fun openingAnimatesBetweenHomeAndList() = checkTransition(true)
     @Test fun closingAnimatesBetweenListAndHome() = checkTransition(false)
 
+    /** Distance between the tops of two neighbouring rows (the row pitch, including padding). */
+    private fun pitch(a: String, b: String) = rule.onNodeWithText(b).fetchSemanticsNode().positionInRoot.y - rule.onNodeWithText(a).fetchSemanticsNode().positionInRoot.y
+
+    @Test fun dragReordersHomeRows() {
+        var moved: Pair<String, Int>? = null
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base, LauncherActions(moveFavourite = { a, d -> moved = a.label to d })) } }
+        val h = pitch("Messages", "Contacts")
+        rule.onNodeWithText("Messages").performTouchInput { down(center); advanceEventTime(700); moveBy(Offset(0f, 2f)); moveBy(Offset(0f, h * 2.2f)); up() }
+        assertEquals("Messages" to 2, moved)
+    }
+
+    @Test fun dragUpwardsMovesBackwards() {
+        var moved: Pair<String, Int>? = null
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base, LauncherActions(moveFavourite = { a, d -> moved = a.label to d })) } }
+        val h = pitch("Music", "Weather")
+        rule.onNodeWithText("Music").performTouchInput { down(center); advanceEventTime(700); moveBy(Offset(0f, -2f)); moveBy(Offset(0f, -h * 1.1f)); up() }
+        assertEquals("Music" to -1, moved)
+    }
+
+    @Test fun tapLaunchesAndLongPressWithoutMovingOpensSheet() {
+        var launched: String? = null
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base, LauncherActions(launch = { launched = it.label })) } }
+        rule.onNodeWithText("Calendar").performClick()
+        assertEquals("Calendar", launched)
+        rule.onNodeWithText("Calendar").performTouchInput { down(center); advanceEventTime(700); up() }
+        rule.waitForIdle()
+        assertTrue(rule.onAllNodesWithText("Show on home").fetchSemanticsNodes().isNotEmpty())
+        assertEquals("Calendar", launched)   // releasing a long-press must not also launch the app
+    }
+
+    @Test fun dragMidScreenshot() {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base, LauncherActions()) } }
+        val h = pitch("Music", "Weather")
+        rule.onNodeWithText("Music").performTouchInput { down(center); advanceEventTime(700); moveBy(Offset(0f, 2f)); moveBy(Offset(0f, h * 2.1f)) }
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/drag_row.png")
+    }
+
     @Test fun sheetApp() = shotLongPress("sheet_app", base, "Calendar")
     @Test fun sheetFolder() = shotLongPress("sheet_folder", base.copy(showDrawer = true), "Money")
 
