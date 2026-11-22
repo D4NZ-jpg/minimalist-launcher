@@ -22,6 +22,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var showDrawer by mutableStateOf(false)
     var showSettings by mutableStateOf(false)
     var use24h by mutableStateOf(repo.use24h); private set
+    var swipe by mutableStateOf(repo.swipe); private set
     var usageMinutes by mutableStateOf<Long?>(null); private set
     var usageGranted by mutableStateOf(false); private set
     var dndGranted by mutableStateOf(false); private set
@@ -63,6 +64,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun toggleFolder(a: AppEntry, name: String) { repo.toggleFolder(a.key, name); refresh() }
     fun newFolder(a: AppEntry, name: String) { repo.createFolder(name)?.let { repo.addToFolder(a.key, it) }; refresh() }
     fun deleteFolder(name: String) { repo.deleteFolder(name); refresh() }
+    fun chooseSwipe(d: SwipeDir) { repo.swipe = d; swipe = d }
     fun set24h(on: Boolean) { repo.use24h = on; use24h = on }
 
     fun toggleDnd() {

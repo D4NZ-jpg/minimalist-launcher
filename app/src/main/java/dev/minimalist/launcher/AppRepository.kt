@@ -11,6 +11,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 
+/** Direction of the swipe that opens the full app list. Left means right-to-left. */
+enum class SwipeDir(val label: String) { Up("Up"), Left("Right to left"), Right("Left to right") }
+
 data class AppEntry(val label: String, val packageName: String, val className: String) {
     val key get() = "$packageName/$className"
     val component get() = ComponentName(packageName, className)
@@ -75,6 +78,10 @@ class AppRepository(private val context: Context) {
     var use24h: Boolean
         get() = prefs.getBoolean("use24h", false)
         set(v) { prefs.edit().putBoolean("use24h", v).apply() }
+
+    var swipe: SwipeDir
+        get() = SwipeDir.entries.firstOrNull { it.name == prefs.getString("swipe", null) } ?: SwipeDir.Up
+        set(v) { prefs.edit().putString("swipe", v.name).apply() }
 
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 

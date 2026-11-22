@@ -20,7 +20,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -32,6 +31,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Close
@@ -131,14 +131,14 @@ fun LauncherScreen(vm: LauncherViewModel) {
         favourites = vm.favourites, dock = vm.dock, folders = vm.folders, results = vm.results,
         hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
-        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h,
+        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe,
     )
     val actions = LauncherActions(
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
         deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
-        openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h,
+        openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h, setSwipe = vm::chooseSwipe,
     )
     LauncherContent(state, actions)
 }
@@ -156,7 +156,28 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
 
     Box(
         Modifier.fillMaxSize().background(Bg)
-            .pointerInput(Unit) { detectVerticalDragGestures { _, dy -> if (dy < -20 && !s.showSettings) a.showDrawer(true) } }
+            .pointerInput(s.swipe, s.showDrawer, s.showSettings) {
+                if (s.showSettings) return@pointerInput
+                var dx = 0f; var dy = 0f; var fired = false
+                detectDragGestures(onDragStart = { dx = 0f; dy = 0f; fired = false }) { _, drag ->
+                    dx += drag.x; dy += drag.y
+                    if (fired) return@detectDragGestures
+                    val t = 80f
+                    val open = when (s.swipe) {
+                        SwipeDir.Up -> dy < -t && -dy > kotlin.math.abs(dx)
+                        SwipeDir.Left -> dx < -t && -dx > kotlin.math.abs(dy)
+                        SwipeDir.Right -> dx > t && dx > kotlin.math.abs(dy)
+                    }
+                    // For sideways swipes the opposite sideways swipe closes the list again.
+                    val close = s.showDrawer && when (s.swipe) {
+                        SwipeDir.Up -> false
+                        SwipeDir.Left -> dx > t && dx > kotlin.math.abs(dy)
+                        SwipeDir.Right -> dx < -t && -dx > kotlin.math.abs(dy)
+                    }
+                    if (!s.showDrawer && open) { fired = true; a.showDrawer(true) }
+                    else if (close) { fired = true; a.showDrawer(false) }
+                }
+            }
             .statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
     ) {
         when {
@@ -165,6 +186,11 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             else -> Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
         }
 
+        if (!s.showDrawer && !s.showSettings) when (s.swipe) {
+            SwipeDir.Left -> Icon(Icons.Default.KeyboardArrowLeft, "Swipe left for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterEnd))
+            SwipeDir.Right -> Icon(Icons.Default.KeyboardArrowRight, "Swipe right for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterStart))
+            SwipeDir.Up -> Unit
+        }
         menuFor?.let { app ->
             val isFav = s.favourites.any { it.key == app.key }
             val isDock = s.dock.any { it.key == app.key }
@@ -232,9 +258,9 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
                 )
             }
             s.folders.forEach { f -> FolderBlock(f, f.name in expanded, 24.sp, { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
-            if (s.favourites.isEmpty() && s.folders.isEmpty()) Text("Swipe up, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
+            if (s.favourites.isEmpty() && s.folders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
         }
-        Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterHorizontally))
+        if (s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterHorizontally))
         Text(
             s.usage, color = Dim, fontSize = 15.sp, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().then(if (s.usageGranted) Modifier else Modifier.clickable { a.openUsageAccess() }).padding(bottom = 12.dp)
@@ -343,8 +369,19 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
         LazyColumn {
             item {
                 SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }) }
+                Text("Swipe to open all apps", color = Color.White, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp))
+                Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    SwipeDir.entries.forEach { d ->
+                        val on = d == s.swipe
+                        Text(
+                            d.label, color = if (on) Color.Black else Color.White, fontSize = 14.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Color.White else Color(0xFF1E1E1E))
+                                .clickable { a.setSwipe(d) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        )
+                    }
+                }
                 SettingRow("Usage access", if (s.usageGranted) "Granted" else "Needed for \"Today's Usage\"", onClick = a.openUsageAccess)
-                SettingRow("Do Not Disturb access", if (s.dndGranted) "Granted" else "Needed for the bell button", onClick = a.openDndAccess)
+                SettingRow("Do Not Disturb access", if (s.dndGranted) "Granted" else "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess)
                 SettingRow("Default launcher", "Open Android home settings", onClick = a.openDefaultLauncher)
                 Text("Hidden apps", color = Dim, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 4.dp))
                 if (s.hiddenApps.isEmpty()) Text("None", color = Color.Gray, modifier = Modifier.padding(8.dp))

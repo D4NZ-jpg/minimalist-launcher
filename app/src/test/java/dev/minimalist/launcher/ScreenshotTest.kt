@@ -68,6 +68,7 @@ class ScreenshotTest {
     @Test fun dragWander() = shotDrag("drag_wander", base.copy(showDrawer = true), 0.6f, startX = 24f, wanderX = -150f)
 
     @Test fun home() = shot("home", base)
+    @Test fun homeSwipeLeft() = shot("home_swipe_left", base.copy(swipe = SwipeDir.Left))
     @Test fun drawer() = shot("drawer", base.copy(showDrawer = true))
     @Test fun search() = shot("search", base.copy(showDrawer = true, query = "s", results = all.filter { it.label.contains("s", true) }))
     @Test fun settings() = shot("settings", base.copy(showSettings = true, usageGranted = false, hiddenApps = listOf(app("Timer"))))
