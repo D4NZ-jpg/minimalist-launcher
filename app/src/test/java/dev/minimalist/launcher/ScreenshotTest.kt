@@ -51,18 +51,20 @@ class ScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
-    private fun shotDrag(name: String, s: LauncherState, frac: Float) {
+    private fun shotDrag(name: String, s: LauncherState, frac: Float, startX: Float, wanderX: Float) {
         rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(s, LauncherActions()) } }
         rule.onNodeWithTag("alphabet").performTouchInput {
-            down(Offset(centerX, height * 0.05f))
-            moveTo(Offset(centerX, height * frac))   // finger slides down the strip and is still held
+            down(Offset(startX, height * 0.05f))
+            moveTo(Offset(startX + wanderX, height * frac))   // finger slides down (and sideways), still held
         }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
-    @Test fun dragMid() = shotDrag("drag_mid", base.copy(showDrawer = true), 0.45f)
-    @Test fun dragLow() = shotDrag("drag_low", base.copy(showDrawer = true), 0.85f)
+    @Test fun dragMid() = shotDrag("drag_mid", base.copy(showDrawer = true), 0.45f, startX = 24f, wanderX = 0f)
+    @Test fun dragLow() = shotDrag("drag_low", base.copy(showDrawer = true), 0.85f, startX = 24f, wanderX = 0f)
+    @Test fun dragLeftStart() = shotDrag("drag_left_start", base.copy(showDrawer = true), 0.6f, startX = 2f, wanderX = 0f)
+    @Test fun dragWander() = shotDrag("drag_wander", base.copy(showDrawer = true), 0.6f, startX = 24f, wanderX = -150f)
 
     @Test fun home() = shot("home", base)
     @Test fun drawer() = shot("drawer", base.copy(showDrawer = true))

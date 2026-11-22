@@ -415,8 +415,10 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
     var height by remember { mutableIntStateOf(1) }
     var last by remember { mutableStateOf<Char?>(null) }
     var touchY by remember { mutableStateOf<Float?>(null) }
+    var anchorX by remember { mutableStateOf<Float?>(null) }   // x where the touch began; never follows the finger
+    var widthPx by remember { mutableIntStateOf(1) }
     val itemPx = with(density) { 16.dp.toPx() }
-    val maxShift = with(density) { 36.dp.toPx() }
+    val clearance = with(density) { 44.dp.toPx() }   // how far left of the finger the arc peak sits
     val sigma = itemPx * 3.2f
 
     fun pick(y: Float) {
@@ -425,21 +427,23 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
         val l = letters[(y / height * letters.size).toInt().coerceIn(0, letters.size - 1)]
         if (l != last) { last = l; haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onLetter(l) }
     }
-    fun release() { touchY = null; last = null }
+    fun release() { touchY = null; anchorX = null; last = null }
 
     Box(modifier.width(32.dp)) {
         Column(
-            Modifier.fillMaxWidth().testTag("alphabet").onSizeChanged { height = it.height.coerceAtLeast(1) }
-                .pointerInput(letters) { detectDragGestures(onDragStart = { pick(it.y) }, onDragEnd = ::release, onDragCancel = ::release) { c, _ -> pick(c.position.y) } }
-                .pointerInput(letters) { detectTapGestures(onPress = { pick(it.y); if (tryAwaitRelease()) release() }) },
+            Modifier.fillMaxWidth().testTag("alphabet").onSizeChanged { height = it.height.coerceAtLeast(1); widthPx = it.width.coerceAtLeast(1) }
+                .pointerInput(letters) { detectDragGestures(onDragStart = { if (anchorX == null) anchorX = it.x; pick(it.y) }, onDragEnd = ::release, onDragCancel = ::release) { c, _ -> pick(c.position.y) } }
+                .pointerInput(letters) { detectTapGestures(onPress = { anchorX = it.x; pick(it.y); if (tryAwaitRelease()) release() }) },
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             letters.forEachIndexed { i, ch ->
                 val d = touchY?.let { ((i + 0.5f) * itemPx - it) / sigma }
                 val pull = if (d == null) 0f else kotlin.math.exp(-d * d)
+                // Peak letter ends up `clearance` left of where the finger first landed.
+                val peakShift = (anchorX ?: (widthPx / 2f)) - clearance - widthPx / 2f
                 Box(
                     Modifier.height(16.dp).fillMaxWidth()
-                        .offset { IntOffset((-maxShift * pull).toInt(), 0) }
+                        .offset { IntOffset((peakShift * pull).toInt(), 0) }
                         .graphicsLayer { val sc = 1f + 0.6f * pull; scaleX = sc; scaleY = sc },
                     contentAlignment = Alignment.Center,
                 ) { Text(ch.toString(), color = Color.White.copy(alpha = 0.55f + 0.45f * pull), fontSize = 11.sp) }
@@ -447,7 +451,7 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
         }
         touchY?.let { y ->
             Box(
-                Modifier.offset { IntOffset(-with(density) { 96.dp.roundToPx() }, (y - with(density) { 28.dp.toPx() }).toInt()) }
+                Modifier.offset { IntOffset(((anchorX ?: 0f) - clearance - with(density) { 84.dp.toPx() }).toInt(), (y - with(density) { 28.dp.toPx() }).toInt()) }
                     .requiredSize(56.dp).clip(CircleShape).background(Color(0xFF2A2A2A)).border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) { Text((last ?: ' ').toString(), color = Color.White, fontSize = 28.sp) }
