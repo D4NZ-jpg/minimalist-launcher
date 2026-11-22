@@ -90,15 +90,6 @@ private fun ActionChip(label: String, enabled: Boolean = true, selected: Boolean
     )
 }
 
-@Composable
-private fun MoveRow(canUp: Boolean, canDown: Boolean, onMove: (Int) -> Unit) {
-    Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("Order", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-        ActionChip("↑  Up", enabled = canUp) { onMove(-1) }
-        ActionChip("↓  Down", enabled = canDown) { onMove(1) }
-    }
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () -> Unit) {
@@ -108,7 +99,6 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
     SheetHost(onDismiss) {
         SheetTitle(app.label)
         ToggleRow("Show on home", favIndex >= 0) { a.toggleFavourite(app) }
-        if (favIndex >= 0) MoveRow(favIndex > 0, favIndex < s.favourites.lastIndex) { a.moveFavourite(app, it) }
         ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
         ToggleRow("Hide from app list", app.key in s.hiddenKeys) { a.toggleHidden(app) }
         SheetLabel("Folders")
@@ -143,7 +133,6 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
     SheetHost(onDismiss) {
         SheetTitle(folder)
         ToggleRow("Show on home", i >= 0) { a.toggleHomeFolder(folder) }
-        if (i >= 0) MoveRow(i > 0, i < s.homeFolders.lastIndex) { a.moveHomeFolder(folder, it) }
         Text(
             "Delete folder", color = Dim, fontSize = 16.sp,
             modifier = Modifier.padding(top = 12.dp).clickable { a.deleteFolder(folder); onDismiss() }.padding(vertical = 8.dp),
