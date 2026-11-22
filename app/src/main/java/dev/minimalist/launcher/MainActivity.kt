@@ -21,6 +21,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -253,7 +255,9 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
             Spacer(Modifier.height(6.dp))
             BatteryIcon(s.battery, s.charging)
         }
-        Column(Modifier.weight(1f).padding(top = 48.dp)) {
+        // Scrolls when favourites + folders overflow. Disabled for swipe-up, where a vertical
+        // scroller would swallow the gesture that opens the app list.
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState(), enabled = s.swipe != SwipeDir.Up).padding(top = 48.dp)) {
             s.favourites.forEach { app ->
                 Text(
                     app.label, color = Color.White, fontSize = sz(24),
