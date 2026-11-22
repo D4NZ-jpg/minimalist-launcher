@@ -8,6 +8,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import org.junit.Rule
 import org.junit.Test
@@ -47,8 +49,9 @@ class ScreenshotTest {
         results = all,
     )
 
-    private fun shot(name: String, s: LauncherState) {
+    private fun shot(name: String, s: LauncherState, pick: Boolean = false) {
         rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(s, LauncherActions()) } }
+        if (pick) { rule.onNodeWithText("Hide more apps…").performClick(); rule.waitForIdle() }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
@@ -72,4 +75,5 @@ class ScreenshotTest {
     @Test fun drawer() = shot("drawer", base.copy(showDrawer = true))
     @Test fun search() = shot("search", base.copy(showDrawer = true, query = "s", results = all.filter { it.label.contains("s", true) }))
     @Test fun settings() = shot("settings", base.copy(showSettings = true, usageGranted = false, hiddenApps = listOf(app("Timer"))))
+    @Test fun hidePicker() = shot("hide_picker", base.copy(showSettings = true, allApps = all, hiddenKeys = setOf(app("Timer").key)), pick = true)
 }

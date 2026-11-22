@@ -7,7 +7,7 @@ data class LauncherState(
     val usage: String = "", val usageGranted: Boolean = true,
     val favourites: List<AppEntry> = emptyList(), val dock: List<AppEntry> = emptyList(),
     val folders: List<FolderUi> = emptyList(), val results: List<AppEntry> = emptyList(),
-    val hiddenKeys: Set<String> = emptySet(), val hiddenApps: List<AppEntry> = emptyList(),
+    val allApps: List<AppEntry> = emptyList(), val hiddenKeys: Set<String> = emptySet(), val hiddenApps: List<AppEntry> = emptyList(),
     val query: String = "", val showDrawer: Boolean = false, val showSettings: Boolean = false,
     val dnd: Boolean = false, val dndGranted: Boolean = false, val use24h: Boolean = false, val swipe: SwipeDir = SwipeDir.Up,
 )

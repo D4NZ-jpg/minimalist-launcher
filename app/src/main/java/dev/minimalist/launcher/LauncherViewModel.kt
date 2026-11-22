@@ -15,6 +15,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var favourites by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var dock by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var folders by mutableStateOf<List<FolderUi>>(emptyList()); private set
+    var allApps by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var results by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var hiddenKeys by mutableStateOf<Set<String>>(emptySet()); private set
     var hiddenApps by mutableStateOf<List<AppEntry>>(emptyList()); private set
@@ -38,6 +39,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         dock = repo.dock().mapNotNull { byKey[it] }.onEach(repo::loadIcon)
         val members = repo.folderMembers()
         folders = repo.folderNames().map { n -> FolderUi(n, (members[n] ?: emptyList()).mapNotNull { byKey[it] }.sortedBy { it.label.lowercase() }) }
+        allApps = all
         hiddenApps = all.filter { it.key in hiddenKeys }
         updateResults()
     }

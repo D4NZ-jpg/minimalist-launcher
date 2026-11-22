@@ -129,7 +129,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
         date = "${now.dayOfWeek.getDisplayName(TextStyle.FULL, locale)}, ${now.dayOfMonth}${ordinal(now.dayOfMonth)} ${now.month.getDisplayName(TextStyle.FULL, locale)}",
         battery = battery, charging = charging, usage = usage, usageGranted = vm.usageGranted,
         favourites = vm.favourites, dock = vm.dock, folders = vm.folders, results = vm.results,
-        hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
+        allApps = vm.allApps, hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
         dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe,
     )
@@ -361,6 +361,9 @@ private fun AppRow(app: AppEntry, size: androidx.compose.ui.unit.TextUnit, start
 
 @Composable
 private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
+    var picking by remember { mutableStateOf(false) }
+    BackHandler(enabled = picking) { picking = false }
+    if (picking) { HidePicker(s, a) { picking = false }; return }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton({ a.showSettings(false) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
@@ -384,9 +387,40 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
                 SettingRow("Do Not Disturb access", if (s.dndGranted) "Granted" else "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess)
                 SettingRow("Default launcher", "Open Android home settings", onClick = a.openDefaultLauncher)
                 Text("Hidden apps", color = Dim, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 4.dp))
-                if (s.hiddenApps.isEmpty()) Text("None", color = Color.Gray, modifier = Modifier.padding(8.dp))
+                SettingRow("Hide more apps…", "Choose apps to remove from the app list", onClick = { picking = true })
+                if (s.hiddenApps.isEmpty()) Text("None hidden", color = Color.Gray, modifier = Modifier.padding(8.dp))
             }
             items(s.hiddenApps, key = { it.key }) { app -> SettingRow(app.label, "Hidden from the app list; still found by search", onClick = { a.toggleHidden(app) }) { Text("Unhide", color = Color.White, fontSize = 15.sp) } }
+        }
+    }
+}
+
+/** Full list of apps with a checkbox each; ticked apps are hidden from the drawer. */
+@Composable
+private fun HidePicker(s: LauncherState, a: LauncherActions, onBack: () -> Unit) {
+    var filter by remember { mutableStateOf("") }
+    val shown = remember(s.allApps, filter) { s.allApps.filter { it.label.contains(filter.trim(), ignoreCase = true) } }
+    Column(Modifier.fillMaxSize()) {
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
+            Text("Hide apps", color = Color.White, fontSize = 22.sp)
+        }
+        TextField(
+            value = filter, onValueChange = { filter = it }, singleLine = true, shape = RoundedCornerShape(50),
+            placeholder = { Text("Filter apps") }, leadingIcon = { Icon(Icons.Default.Search, null) },
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color(0xFF1E1E1E), unfocusedContainerColor = Color(0xFF1E1E1E),
+                focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+            ),
+        )
+        LazyColumn {
+            items(shown, key = { it.key }) { app ->
+                Row(Modifier.fillMaxWidth().clickable { a.toggleHidden(app) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(app.label, color = Color.White, fontSize = 18.sp, modifier = Modifier.weight(1f))
+                    Checkbox(app.key in s.hiddenKeys, { a.toggleHidden(app) })
+                }
+            }
         }
     }
 }
