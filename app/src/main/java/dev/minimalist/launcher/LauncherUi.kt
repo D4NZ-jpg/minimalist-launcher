@@ -1,0 +1,23 @@
+package dev.minimalist.launcher
+
+data class FolderUi(val name: String, val apps: List<AppEntry>)
+
+data class LauncherState(
+    val time: String = "", val date: String = "", val battery: Int = 100, val charging: Boolean = false,
+    val usage: String = "", val usageGranted: Boolean = true,
+    val favourites: List<AppEntry> = emptyList(), val dock: List<AppEntry> = emptyList(),
+    val folders: List<FolderUi> = emptyList(), val results: List<AppEntry> = emptyList(),
+    val hiddenKeys: Set<String> = emptySet(), val hiddenApps: List<AppEntry> = emptyList(),
+    val query: String = "", val showDrawer: Boolean = false, val showSettings: Boolean = false,
+    val dnd: Boolean = false, val dndGranted: Boolean = false, val use24h: Boolean = false,
+)
+
+class LauncherActions(
+    val showDrawer: (Boolean) -> Unit = {}, val showSettings: (Boolean) -> Unit = {}, val query: (String) -> Unit = {},
+    val launch: (AppEntry) -> Unit = {}, val toggleFavourite: (AppEntry) -> Unit = {}, val toggleDock: (AppEntry) -> Unit = {},
+    val toggleHidden: (AppEntry) -> Unit = {}, val uninstall: (AppEntry) -> Unit = {},
+    val toggleFolder: (AppEntry, String) -> Unit = { _, _ -> }, val newFolder: (AppEntry, String) -> Unit = { _, _ -> },
+    val deleteFolder: (String) -> Unit = {}, val toggleDnd: () -> Unit = {},
+    val openUsageAccess: () -> Unit = {}, val openDndAccess: () -> Unit = {}, val openDefaultLauncher: () -> Unit = {},
+    val set24h: (Boolean) -> Unit = {},
+)
