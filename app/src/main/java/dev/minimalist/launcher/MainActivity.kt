@@ -190,8 +190,8 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
         } }
 
         if (!s.showDrawer && !s.showSettings) when (s.swipe) {
-            SwipeDir.Left -> Icon(Icons.Default.KeyboardArrowLeft, "Swipe left for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterEnd))
-            SwipeDir.Right -> Icon(Icons.Default.KeyboardArrowRight, "Swipe right for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterStart))
+            SwipeDir.Left -> Icon(Icons.Default.KeyboardArrowLeft, "Swipe left for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterEnd))
+            SwipeDir.Right -> Icon(Icons.Default.KeyboardArrowRight, "Swipe right for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterStart))
             SwipeDir.Up -> Unit
         }
         menuFor?.let { app ->
@@ -263,7 +263,7 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
             s.folders.forEach { f -> FolderBlock(f, f.name in expanded, sz(24), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
             if (s.favourites.isEmpty() && s.folders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
         }
-        if (s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterHorizontally))
+        if (s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterHorizontally))
         Text(
             s.usage, color = Dim, fontSize = 15.sp, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().then(if (s.usageGranted) Modifier else Modifier.clickable { a.openUsageAccess() }).padding(bottom = 12.dp)
@@ -397,14 +397,14 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
                         )
                     }
                 }
-                SettingRow("Usage access", if (s.usageGranted) "Granted" else "Needed for \"Today's Usage\"", onClick = a.openUsageAccess)
-                SettingRow("Do Not Disturb access", if (s.dndGranted) "Granted" else "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess)
+                SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
+                SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }
                 SettingRow("Default launcher", "Open Android home settings", onClick = a.openDefaultLauncher)
                 Text("Hidden apps", color = Dim, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 4.dp))
                 SettingRow("Hide more apps…", "Choose apps to remove from the app list", onClick = { picking = true })
                 if (s.hiddenApps.isEmpty()) Text("None hidden", color = Color.Gray, modifier = Modifier.padding(8.dp))
             }
-            items(s.hiddenApps, key = { it.key }) { app -> SettingRow(app.label, "Hidden from the app list; still found by search", onClick = { a.toggleHidden(app) }) { Text("Unhide", color = Color.White, fontSize = 15.sp) } }
+            items(s.hiddenApps, key = { it.key }) { app -> SettingRow(app.label, "Hidden from the app list", onClick = { a.toggleHidden(app) }) { Text("Unhide", color = Color.White, fontSize = 15.sp) } }
         }
     }
 }
@@ -430,13 +430,18 @@ private fun HidePicker(s: LauncherState, a: LauncherActions, onBack: () -> Unit)
         )
         LazyColumn {
             items(shown, key = { it.key }) { app ->
-                Row(Modifier.fillMaxWidth().clickable { a.toggleHidden(app) }.padding(horizontal = 8.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clickable { a.toggleHidden(app) }.padding(horizontal = 8.dp, vertical = 0.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(app.label, color = Color.White, fontSize = 18.sp, modifier = Modifier.weight(1f))
                     Checkbox(app.key in s.hiddenKeys, { a.toggleHidden(app) })
                 }
             }
         }
     }
+}
+
+@Composable
+private fun StatusText(on: Boolean) {
+    Text(if (on) "On" else "Off", color = if (on) Color.White else Dim, fontSize = 15.sp)
 }
 
 @Composable
@@ -503,7 +508,7 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
     var touchY by remember { mutableStateOf<Float?>(null) }
     var anchorX by remember { mutableStateOf<Float?>(null) }   // x where the touch began; never follows the finger
     var widthPx by remember { mutableIntStateOf(1) }
-    val itemPx = with(density) { 16.dp.toPx() }
+    val itemPx = with(density) { 20.dp.toPx() }
     val clearance = with(density) { 44.dp.toPx() }   // how far left of the finger the arc peak sits
     val sigma = itemPx * 3.2f
 
@@ -528,11 +533,11 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
                 // Peak letter ends up `clearance` left of where the finger first landed.
                 val peakShift = (anchorX ?: (widthPx / 2f)) - clearance - widthPx / 2f
                 Box(
-                    Modifier.height(16.dp).fillMaxWidth()
+                    Modifier.height(20.dp).fillMaxWidth()
                         .offset { IntOffset((peakShift * pull).toInt(), 0) }
                         .graphicsLayer { val sc = 1f + 0.6f * pull; scaleX = sc; scaleY = sc },
                     contentAlignment = Alignment.Center,
-                ) { Text(ch.toString(), color = Color.White.copy(alpha = 0.55f + 0.45f * pull), fontSize = 11.sp) }
+                ) { Text(ch.toString(), color = Color.White.copy(alpha = 0.6f + 0.4f * pull), fontSize = 12.sp) }
             }
         }
         touchY?.let { y ->
