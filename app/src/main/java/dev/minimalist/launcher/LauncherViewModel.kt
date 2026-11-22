@@ -15,6 +15,8 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var favourites by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var dock by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var folders by mutableStateOf<List<FolderUi>>(emptyList()); private set
+    var homeFolders by mutableStateOf<List<FolderUi>>(emptyList()); private set
+    private var folderedKeys: Set<String> = emptySet()
     var allApps by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var results by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var hiddenKeys by mutableStateOf<Set<String>>(emptySet()); private set
@@ -25,6 +27,8 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var use24h by mutableStateOf(repo.use24h); private set
     var swipe by mutableStateOf(repo.swipe); private set
     var textSize by mutableStateOf(repo.textSize); private set
+    var showFolderedApps by mutableStateOf(repo.showFolderedApps); private set
+    var showSwipeHint by mutableStateOf(repo.showSwipeHint); private set
     var usageMinutes by mutableStateOf<Long?>(null); private set
     var usageGranted by mutableStateOf(false); private set
     var dndGranted by mutableStateOf(false); private set
@@ -49,6 +53,8 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         dock = repo.dock().mapNotNull { byKey[it] }.onEach(repo::loadIcon)
         val members = repo.folderMembers()
         folders = repo.folderNames().map { n -> FolderUi(n, (members[n] ?: emptyList()).mapNotNull { byKey[it] }.sortedBy { it.label.lowercase() }) }
+        homeFolders = repo.homeFolders().mapNotNull { n -> folders.firstOrNull { it.name == n } }
+        folderedKeys = members.values.flatten().toSet()
         allApps = all
         hiddenApps = all.filter { it.key in hiddenKeys }
         updateResults()
@@ -65,7 +71,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun updateResults() {
         val q = query.trim().lowercase()
-        results = if (q.isEmpty()) all.filter { it.key !in hiddenKeys }
+        results = if (q.isEmpty()) all.filter { it.key !in hiddenKeys && (showFolderedApps || it.key !in folderedKeys) }
         else all.filter { it.label.lowercase().contains(q) }
             .sortedWith(compareBy({ !it.label.lowercase().startsWith(q) }, { it.label.lowercase() }))
     }
@@ -78,6 +84,11 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun toggleFolder(a: AppEntry, name: String) { repo.toggleFolder(a.key, name); refresh() }
     fun newFolder(a: AppEntry, name: String) { repo.createFolder(name)?.let { repo.addToFolder(a.key, it) }; refresh() }
     fun deleteFolder(name: String) { repo.deleteFolder(name); refresh() }
+    fun moveFavourite(a: AppEntry, delta: Int) { repo.moveFavourite(a.key, delta); refresh() }
+    fun toggleHomeFolder(name: String) { repo.setHomeFolder(name, name !in homeFolders.map { it.name }); refresh() }
+    fun moveHomeFolder(name: String, delta: Int) { repo.moveHomeFolder(name, delta); refresh() }
+    fun chooseShowFoldered(on: Boolean) { repo.showFolderedApps = on; showFolderedApps = on; updateResults() }
+    fun chooseShowHint(on: Boolean) { repo.showSwipeHint = on; showSwipeHint = on }
     fun chooseTextSize(t: TextSize) { repo.textSize = t; textSize = t }
     fun chooseSwipe(d: SwipeDir) { repo.swipe = d; swipe = d }
     fun set24h(on: Boolean) { repo.use24h = on; use24h = on }

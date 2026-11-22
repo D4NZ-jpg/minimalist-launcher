@@ -105,6 +105,27 @@ class AppRepository(private val context: Context) {
         get() = TextSize.entries.firstOrNull { it.name == prefs.getString("textSize", null) } ?: TextSize.Medium
         set(v) { prefs.edit().putString("textSize", v.name).apply() }
 
+    /** Folders chosen to appear on the home screen, in display order. */
+    fun homeFolders(): List<String> = prefs.getString("homeFolders", "")!!.split("\n").filter { it.isNotEmpty() }
+    fun replaceHomeFolders(names: List<String>) { prefs.edit().putString("homeFolders", names.distinct().joinToString("\n")).apply() }
+    fun setHomeFolder(name: String, on: Boolean) = replaceHomeFolders(homeFolders().toMutableList().apply { remove(name); if (on) add(name) })
+
+    fun moveFavourite(key: String, delta: Int) = replaceFavourites(moved(favourites(), key, delta))
+    fun moveHomeFolder(name: String, delta: Int) = replaceHomeFolders(moved(homeFolders(), name, delta))
+    private fun moved(list: List<String>, item: String, delta: Int): List<String> {
+        val i = list.indexOf(item); if (i < 0) return list
+        return list.toMutableList().apply { add((i + delta).coerceIn(0, size - 1), removeAt(i)) }
+    }
+
+    /** When off, apps that sit in a folder are left out of the main app list (search still finds them). */
+    var showFolderedApps: Boolean
+        get() = prefs.getBoolean("showFoldered", false)
+        set(v) { prefs.edit().putBoolean("showFoldered", v).apply() }
+
+    var showSwipeHint: Boolean
+        get() = prefs.getBoolean("showHint", false)
+        set(v) { prefs.edit().putBoolean("showHint", v).apply() }
+
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 
     /** folder name -> member app keys */
@@ -121,6 +142,7 @@ class AppRepository(private val context: Context) {
 
     fun deleteFolder(name: String) {
         prefs.edit().putString("folders", folderNames().filter { it != name }.joinToString("\n")).apply()
+        setHomeFolder(name, false)
         writeMap(folderMembers() - name)
     }
 

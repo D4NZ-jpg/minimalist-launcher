@@ -133,17 +133,18 @@ fun LauncherScreen(vm: LauncherViewModel) {
         time = now.format(DateTimeFormatter.ofPattern(if (vm.use24h) "HH:mm" else "h:mm a", locale)),
         date = "${now.dayOfWeek.getDisplayName(TextStyle.FULL, locale)}, ${now.dayOfMonth}${ordinal(now.dayOfMonth)} ${now.month.getDisplayName(TextStyle.FULL, locale)}",
         battery = battery, charging = charging, usage = usage, usageGranted = vm.usageGranted,
-        favourites = vm.favourites, dock = vm.dock, folders = vm.folders, results = vm.results,
+        favourites = vm.favourites, dock = vm.dock, folders = vm.folders, homeFolders = vm.homeFolders, results = vm.results,
         allApps = vm.allApps, hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
-        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, textSize = vm.textSize,
+        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
     )
     val actions = LauncherActions(
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
         deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
-        openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize,
+        openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
+        moveHomeFolder = vm::moveHomeFolder, setShowFolderedApps = vm::chooseShowFoldered, setShowSwipeHint = vm::chooseShowHint,
     )
     LauncherContent(state, actions)
 }
@@ -202,6 +203,10 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             val isHidden = app.key in s.hiddenKeys
             DropdownMenu(expanded = true, onDismissRequest = { menuFor = null }) {
                 DropdownMenuItem(text = { Text(if (isFav) "Remove from home" else "Add to home") }, onClick = { a.toggleFavourite(app); menuFor = null })
+                if (isFav) {
+                    DropdownMenuItem(text = { Text("Move up") }, onClick = { a.moveFavourite(app, -1); menuFor = null })
+                    DropdownMenuItem(text = { Text("Move down") }, onClick = { a.moveFavourite(app, 1); menuFor = null })
+                }
                 DropdownMenuItem(text = { Text(if (isDock) "Remove from dock" else "Add to dock") }, onClick = { a.toggleDock(app); menuFor = null })
                 DropdownMenuItem(text = { Text("Folder…") }, onClick = { folderPickerFor = app; menuFor = null })
                 DropdownMenuItem(text = { Text(if (isHidden) "Unhide" else "Hide") }, onClick = { a.toggleHidden(app); menuFor = null })
@@ -210,6 +215,12 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
         }
         folderMenu?.let { name ->
             DropdownMenu(expanded = true, onDismissRequest = { folderMenu = null }) {
+                val onHome = s.homeFolders.any { it.name == name }
+                DropdownMenuItem(text = { Text(if (onHome) "Remove from home" else "Show on home") }, onClick = { a.toggleHomeFolder(name); folderMenu = null })
+                if (onHome) {
+                    DropdownMenuItem(text = { Text("Move up") }, onClick = { a.moveHomeFolder(name, -1); folderMenu = null })
+                    DropdownMenuItem(text = { Text("Move down") }, onClick = { a.moveHomeFolder(name, 1); folderMenu = null })
+                }
                 DropdownMenuItem(text = { Text("Delete folder \"$name\"") }, onClick = { a.deleteFolder(name); folderMenu = null })
             }
         }
@@ -264,8 +275,8 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
                     modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { a.launch(app) }, onLongClick = { onAppMenu(app) }).padding(vertical = 9.dp, horizontal = 8.dp)
                 )
             }
-            s.folders.forEach { f -> FolderBlock(f, f.name in expanded, sz(20), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
-            if (s.favourites.isEmpty() && s.folders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
+            s.homeFolders.forEach { f -> FolderBlock(f, f.name in expanded, sz(20), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
+            if (s.favourites.isEmpty() && s.homeFolders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
         }
         if (s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterHorizontally))
         Text(

@@ -19,6 +19,7 @@ object AgentApi {
             .put("dock", JSONArray(repo.dock()))
             .put("hidden", JSONArray(repo.hidden().sorted()))
             .put("folders", folders)
+            .put("homeFolders", JSONArray(repo.homeFolders()))
             .put("swipe", repo.swipe.name)
     }
 
@@ -38,6 +39,10 @@ object AgentApi {
         plan.optJSONObject("folders")?.let { f ->
             repo.replaceFolders(f.keys().asSequence().associateWith { keys(f.getJSONArray(it)) })
             applied.put("folders", true)
+        }
+        plan.optJSONArray("homeFolders")?.let { a ->
+            val names = (0 until a.length()).map { a.getString(it) }.filter { it in repo.folderNames() }
+            repo.replaceHomeFolders(names); applied.put("homeFolders", true)
         }
         return JSONObject().put("ok", true).put("applied", applied).put("unknownKeys", JSONArray(unknown.toList()))
     }

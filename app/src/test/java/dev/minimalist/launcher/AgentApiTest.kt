@@ -25,6 +25,17 @@ class AgentApiTest {
         assertEquals(listOf("x/X"), (0 until out.getJSONArray("unknownKeys").length()).map { out.getJSONArray("unknownKeys").getString(it) })
     }
 
+    @Test fun homeFoldersAndReordering() {
+        AgentApi.apply(repo, JSONObject("""{"favourites":["a/A","b/B","c/C"],"folders":{"Work":["a/A"],"Fun":["b/B"]},"homeFolders":["Fun","Missing","Work"]}"""), known)
+        assertEquals(listOf("Fun", "Work"), repo.homeFolders())
+        repo.moveFavourite("c/C", -2)
+        assertEquals(listOf("c/C", "a/A", "b/B"), repo.favourites())
+        repo.moveHomeFolder("Fun", 5)
+        assertEquals(listOf("Work", "Fun"), repo.homeFolders())
+        repo.deleteFolder("Work")
+        assertEquals(listOf("Fun"), repo.homeFolders())
+    }
+
     @Test fun absentSectionsAreLeftAlone() {
         AgentApi.apply(repo, JSONObject("""{"favourites":["a/A"]}"""), known)
         AgentApi.apply(repo, JSONObject("""{"hidden":["b/B"]}"""), known)

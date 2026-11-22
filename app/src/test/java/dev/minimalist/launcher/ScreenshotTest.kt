@@ -46,6 +46,7 @@ class ScreenshotTest {
         favourites = listOf("Messages", "Contacts", "Calendar", "Music", "Weather", "Compass", "Files").map(::app),
         dock = listOf("Phone", "Camera", "Maps").map { n -> app(n).also { it.icon = icon(n) } },
         folders = listOf(FolderUi("Money", listOf(app("Wallet"))), FolderUi("Tools", listOf(app("Timer"), app("Notes")))),
+        homeFolders = listOf(FolderUi("Tools", listOf(app("Timer"), app("Notes")))),
         results = all,
     )
 
