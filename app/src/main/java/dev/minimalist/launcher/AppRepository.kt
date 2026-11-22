@@ -13,6 +13,9 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 
 /** Direction of the swipe that opens the full app list. Left means right-to-left. */
+/** Scales the clock and the app lists. */
+enum class TextSize(val label: String, val scale: Float) { Small("Small", 0.85f), Medium("Medium", 1f), Large("Large", 1.2f) }
+
 enum class SwipeDir(val label: String) { Up("Up"), Left("Right to left"), Right("Left to right") }
 
 data class AppEntry(val label: String, val packageName: String, val className: String) {
@@ -97,6 +100,10 @@ class AppRepository(private val context: Context) {
 
     fun registerChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener) = prefs.registerOnSharedPreferenceChangeListener(l)
     fun unregisterChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener) = prefs.unregisterOnSharedPreferenceChangeListener(l)
+
+    var textSize: TextSize
+        get() = TextSize.entries.firstOrNull { it.name == prefs.getString("textSize", null) } ?: TextSize.Medium
+        set(v) { prefs.edit().putString("textSize", v.name).apply() }
 
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 

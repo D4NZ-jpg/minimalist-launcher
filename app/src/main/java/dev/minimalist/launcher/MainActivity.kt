@@ -76,6 +76,9 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 private val Bg = Color(0xFF0B0B0B)
+private val LocalTextScale = compositionLocalOf { 1f }
+@Composable private fun sz(v: Int) = (v * LocalTextScale.current).sp
+
 private val Dim = Color.White.copy(alpha = 0.7f)
 
 class MainActivity : ComponentActivity() {
@@ -131,14 +134,14 @@ fun LauncherScreen(vm: LauncherViewModel) {
         favourites = vm.favourites, dock = vm.dock, folders = vm.folders, results = vm.results,
         allApps = vm.allApps, hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
-        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe,
+        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, textSize = vm.textSize,
     )
     val actions = LauncherActions(
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
         deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
-        openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h, setSwipe = vm::chooseSwipe,
+        openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize,
     )
     LauncherContent(state, actions)
 }
@@ -180,11 +183,11 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             }
             .statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
     ) {
-        when {
+        CompositionLocalProvider(LocalTextScale provides s.textSize.scale) { when {
             s.showSettings -> SettingsScreen(s, a)
             s.showDrawer -> Drawer(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
             else -> Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
-        }
+        } }
 
         if (!s.showDrawer && !s.showSettings) when (s.swipe) {
             SwipeDir.Left -> Icon(Icons.Default.KeyboardArrowLeft, "Swipe left for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterEnd))
@@ -245,7 +248,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
 private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateList<String>, onAppMenu: (AppEntry) -> Unit, onFolderMenu: (String) -> Unit) {
     Column(Modifier.fillMaxSize()) {
         Column(Modifier.fillMaxWidth().padding(top = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(s.time, color = Color.White, fontSize = 48.sp)
+            Text(s.time, color = Color.White, fontSize = sz(48))
             Text(s.date, color = Dim, fontSize = 16.sp)
             Spacer(Modifier.height(6.dp))
             BatteryIcon(s.battery, s.charging)
@@ -253,11 +256,11 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
         Column(Modifier.weight(1f).padding(top = 48.dp)) {
             s.favourites.forEach { app ->
                 Text(
-                    app.label, color = Color.White, fontSize = 24.sp,
+                    app.label, color = Color.White, fontSize = sz(24),
                     modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { a.launch(app) }, onLongClick = { onAppMenu(app) }).padding(vertical = 12.dp, horizontal = 8.dp)
                 )
             }
-            s.folders.forEach { f -> FolderBlock(f, f.name in expanded, 24.sp, { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
+            s.folders.forEach { f -> FolderBlock(f, f.name in expanded, sz(24), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
             if (s.favourites.isEmpty() && s.folders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
         }
         if (s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.align(Alignment.CenterHorizontally))
@@ -334,13 +337,13 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
         Row(Modifier.weight(1f)) {
             LazyColumn(Modifier.weight(1f), state = listState) {
                 if (!searching) s.folders.forEach { f ->
-                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, 22.sp, { toggle(expanded, f.name) }, onFolderMenu) }
+                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(22), { toggle(expanded, f.name) }, onFolderMenu) }
                     if (f.name in expanded) {
-                        items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, 20.sp, 48.dp, a.launch, onAppMenu) }
+                        items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(20), 48.dp, a.launch, onAppMenu) }
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("Empty. Long-press an app → Folder…", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
                     }
                 }
-                items(s.results, key = { it.key }) { app -> AppRow(app, 22.sp, 8.dp, a.launch, onAppMenu) }
+                items(s.results, key = { it.key }) { app -> AppRow(app, sz(22), 8.dp, a.launch, onAppMenu) }
             }
             if (!searching) AlphabetBar(letters, Modifier.align(Alignment.CenterVertically)) { letter ->
                 val i = s.results.indexOfFirst { it.letter() == letter }
@@ -380,6 +383,17 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
                             d.label, color = if (on) Color.Black else Color.White, fontSize = 14.sp,
                             modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Color.White else Color(0xFF1E1E1E))
                                 .clickable { a.setSwipe(d) }.padding(horizontal = 14.dp, vertical = 8.dp),
+                        )
+                    }
+                }
+                Text("Text size", color = Color.White, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp))
+                Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextSize.entries.forEach { t ->
+                        val on = t == s.textSize
+                        Text(
+                            t.label, color = if (on) Color.Black else Color.White, fontSize = 14.sp,
+                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Color.White else Color(0xFF1E1E1E))
+                                .clickable { a.setTextSize(t) }.padding(horizontal = 14.dp, vertical = 8.dp),
                         )
                     }
                 }
