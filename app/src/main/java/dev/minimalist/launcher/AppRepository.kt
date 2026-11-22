@@ -3,6 +3,8 @@ package dev.minimalist.launcher
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.net.Uri
 import android.provider.MediaStore
 import androidx.compose.ui.graphics.ImageBitmap
@@ -60,7 +62,13 @@ class AppRepository(private val context: Context) {
 
     fun loadIcon(app: AppEntry) {
         if (app.icon == null) app.icon = runCatching {
-            context.packageManager.getActivityIcon(app.component).toBitmap(128, 128).asImageBitmap()
+            val d = context.packageManager.getActivityIcon(app.component)
+            if (d is AdaptiveIconDrawable) {
+                // Adaptive icons are 108dp layers with the visible mask in the centre 72dp.
+                // Crop to that region so the artwork fills a circular button edge to edge.
+                val full = d.toBitmap(216, 216)
+                Bitmap.createBitmap(full, 36, 36, 144, 144).asImageBitmap()
+            } else d.toBitmap(128, 128).asImageBitmap()
         }.getOrNull()
     }
 

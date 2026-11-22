@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
@@ -371,7 +372,7 @@ private fun DockIcon(app: AppEntry, onLaunch: (AppEntry) -> Unit, onMenu: (AppEn
         .combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onMenu(app) })
     val icon = app.icon
     Box(mod, contentAlignment = Alignment.Center) {
-        if (icon != null) Image(icon, app.label, Modifier.size(30.dp), colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }))
+        if (icon != null) Image(icon, app.label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }))
         else Text(app.label.take(1), color = Color.White, fontSize = 20.sp)
     }
 }
