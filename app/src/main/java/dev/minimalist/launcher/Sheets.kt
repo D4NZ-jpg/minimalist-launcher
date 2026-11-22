@@ -1,0 +1,159 @@
+package dev.minimalist.launcher
+
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.MutableTransitionState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+private val SheetBg = Color(0xFF161616)
+private val Chip = Color(0xFF262626)
+
+/** Bottom action sheet with a scrim. Tapping outside or pressing Back closes it. */
+@Composable
+private fun SheetHost(onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
+    val visible = remember { MutableTransitionState(false).apply { targetState = true } }
+    BackHandler(onBack = onDismiss)
+    Box(Modifier.fillMaxSize()) {
+        AnimatedVisibility(visible, enter = fadeIn(tween(180)), exit = fadeOut(tween(120))) {
+            Box(
+                Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.6f))
+                    .clickable(remember { MutableInteractionSource() }, indication = null, onClick = onDismiss)
+            )
+        }
+        AnimatedVisibility(
+            visible, Modifier.align(Alignment.BottomCenter),
+            enter = slideInVertically(tween(260, easing = FastOutSlowInEasing)) { it },
+            exit = slideOutVertically(tween(180)) { it },
+        ) {
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(SheetBg)
+                    .pointerInput(Unit) { detectTapGestures { } }
+                    .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 20.dp),
+                content = content,
+            )
+        }
+    }
+}
+
+@Composable
+private fun SheetTitle(text: String) {
+    Text(text, color = Color.White, fontSize = 20.sp, modifier = Modifier.padding(bottom = 8.dp))
+}
+
+@Composable
+private fun SheetLabel(text: String) {
+    Text(text.uppercase(), color = Dim, fontSize = 12.sp, letterSpacing = 1.sp, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
+}
+
+@Composable
+private fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Switch(on, { onToggle() }, colors = monoSwitchColors())
+    }
+}
+
+@Composable
+private fun ActionChip(label: String, enabled: Boolean = true, selected: Boolean = false, onClick: () -> Unit) {
+    Text(
+        label, fontSize = 14.sp,
+        color = if (selected) Color.Black else if (enabled) Color.White else Color.White.copy(alpha = 0.3f),
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (selected) Color.White else Chip)
+            .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp),
+    )
+}
+
+@Composable
+private fun MoveRow(canUp: Boolean, canDown: Boolean, onMove: (Int) -> Unit) {
+    Row(Modifier.padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text("Order", color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        ActionChip("↑  Up", enabled = canUp) { onMove(-1) }
+        ActionChip("↓  Down", enabled = canDown) { onMove(1) }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () -> Unit) {
+    val favIndex = s.favourites.indexOfFirst { it.key == app.key }
+    var creating by remember { mutableStateOf(false) }
+    var name by remember { mutableStateOf("") }
+    SheetHost(onDismiss) {
+        SheetTitle(app.label)
+        ToggleRow("Show on home", favIndex >= 0) { a.toggleFavourite(app) }
+        if (favIndex >= 0) MoveRow(favIndex > 0, favIndex < s.favourites.lastIndex) { a.moveFavourite(app, it) }
+        ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
+        ToggleRow("Hide from app list", app.key in s.hiddenKeys) { a.toggleHidden(app) }
+        SheetLabel("Folders")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            s.folders.forEach { f -> ActionChip(f.name, selected = f.apps.any { it.key == app.key }) { a.toggleFolder(app, f.name) } }
+            if (!creating) ActionChip("+ New folder") { creating = true }
+        }
+        if (creating) {
+            TextField(
+                value = name, onValueChange = { name = it }, singleLine = true, shape = RoundedCornerShape(50),
+                placeholder = { Text("Folder name") },
+                modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Chip, unfocusedContainerColor = Chip,
+                    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { a.newFolder(app, name); creating = false; name = "" }),
+                trailingIcon = { TextButton({ a.newFolder(app, name); creating = false; name = "" }) { Text("Add") } },
+            )
+        }
+        Text(
+            "Uninstall", color = Dim, fontSize = 16.sp,
+            modifier = Modifier.padding(top = 16.dp).clickable { a.uninstall(app); onDismiss() }.padding(vertical = 8.dp),
+        )
+    }
+}
+
+@Composable
+fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss: () -> Unit) {
+    val i = s.homeFolders.indexOfFirst { it.name == folder }
+    SheetHost(onDismiss) {
+        SheetTitle(folder)
+        ToggleRow("Show on home", i >= 0) { a.toggleHomeFolder(folder) }
+        if (i >= 0) MoveRow(i > 0, i < s.homeFolders.lastIndex) { a.moveHomeFolder(folder, it) }
+        Text(
+            "Delete folder", color = Dim, fontSize = 16.sp,
+            modifier = Modifier.padding(top = 12.dp).clickable { a.deleteFolder(folder); onDismiss() }.padding(vertical = 8.dp),
+        )
+    }
+}
+
+/** Black-and-white switch: no accent colour. */
+@Composable
+internal fun monoSwitchColors() = SwitchDefaults.colors(
+    checkedThumbColor = Color.Black, checkedTrackColor = Color.White, checkedBorderColor = Color.White,
+    uncheckedThumbColor = Color(0xFF9A9A9A), uncheckedTrackColor = Color(0xFF1E1E1E), uncheckedBorderColor = Color(0xFF555555),
+)

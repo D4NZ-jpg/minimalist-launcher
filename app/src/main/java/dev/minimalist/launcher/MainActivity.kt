@@ -77,11 +77,11 @@ import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
-private val Bg = Color(0xFF0B0B0B)
+internal val Bg = Color(0xFF0B0B0B)
 private val LocalTextScale = compositionLocalOf { 1f }
 @Composable private fun sz(v: Int) = (v * LocalTextScale.current).sp
 
-private val Dim = Color.White.copy(alpha = 0.7f)
+internal val Dim = Color.White.copy(alpha = 0.7f)
 
 class MainActivity : ComponentActivity() {
     private val vm: LauncherViewModel by viewModels()
@@ -153,15 +153,15 @@ fun LauncherScreen(vm: LauncherViewModel) {
 @Composable
 fun LauncherContent(s: LauncherState, a: LauncherActions) {
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
-    var folderPickerFor by remember { mutableStateOf<AppEntry?>(null) }
     var folderMenu by remember { mutableStateOf<String?>(null) }
     val expanded = remember { mutableStateListOf<String>() }
 
     BackHandler(enabled = s.showSettings) { a.showSettings(false) }
     BackHandler(enabled = s.showDrawer && !s.showSettings) { a.showDrawer(false) }
 
+    Box(Modifier.fillMaxSize().background(Bg)) {
     Box(
-        Modifier.fillMaxSize().background(Bg)
+        Modifier.fillMaxSize()
             .pointerInput(s.swipe, s.showDrawer, s.showSettings) {
                 if (s.showSettings) return@pointerInput
                 var dx = 0f; var dy = 0f; var fired = false
@@ -197,62 +197,9 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             SwipeDir.Right -> Icon(Icons.Default.KeyboardArrowRight, "Swipe right for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterStart))
             SwipeDir.Up -> Unit
         }
-        menuFor?.let { app ->
-            val isFav = s.favourites.any { it.key == app.key }
-            val isDock = s.dock.any { it.key == app.key }
-            val isHidden = app.key in s.hiddenKeys
-            DropdownMenu(expanded = true, onDismissRequest = { menuFor = null }) {
-                DropdownMenuItem(text = { Text(if (isFav) "Remove from home" else "Add to home") }, onClick = { a.toggleFavourite(app); menuFor = null })
-                if (isFav) {
-                    DropdownMenuItem(text = { Text("Move up") }, onClick = { a.moveFavourite(app, -1); menuFor = null })
-                    DropdownMenuItem(text = { Text("Move down") }, onClick = { a.moveFavourite(app, 1); menuFor = null })
-                }
-                DropdownMenuItem(text = { Text(if (isDock) "Remove from dock" else "Add to dock") }, onClick = { a.toggleDock(app); menuFor = null })
-                DropdownMenuItem(text = { Text("Folder…") }, onClick = { folderPickerFor = app; menuFor = null })
-                DropdownMenuItem(text = { Text(if (isHidden) "Unhide" else "Hide") }, onClick = { a.toggleHidden(app); menuFor = null })
-                DropdownMenuItem(text = { Text("Uninstall") }, onClick = { a.uninstall(app); menuFor = null })
-            }
-        }
-        folderMenu?.let { name ->
-            DropdownMenu(expanded = true, onDismissRequest = { folderMenu = null }) {
-                val onHome = s.homeFolders.any { it.name == name }
-                DropdownMenuItem(text = { Text(if (onHome) "Remove from home" else "Show on home") }, onClick = { a.toggleHomeFolder(name); folderMenu = null })
-                if (onHome) {
-                    DropdownMenuItem(text = { Text("Move up") }, onClick = { a.moveHomeFolder(name, -1); folderMenu = null })
-                    DropdownMenuItem(text = { Text("Move down") }, onClick = { a.moveHomeFolder(name, 1); folderMenu = null })
-                }
-                DropdownMenuItem(text = { Text("Delete folder \"$name\"") }, onClick = { a.deleteFolder(name); folderMenu = null })
-            }
-        }
-        folderPickerFor?.let { app ->
-            var creating by remember { mutableStateOf(false) }
-            var name by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { folderPickerFor = null },
-                title = { Text(app.label) },
-                text = {
-                    Column {
-                        if (creating) {
-                            OutlinedTextField(name, { name = it }, singleLine = true, placeholder = { Text("Folder name") })
-                        } else {
-                            s.folders.forEach { f ->
-                                val member = f.apps.any { it.key == app.key }
-                                Row(Modifier.fillMaxWidth().clickable { a.toggleFolder(app, f.name) }, verticalAlignment = Alignment.CenterVertically) {
-                                    Checkbox(member, { a.toggleFolder(app, f.name) })
-                                    Text(f.name)
-                                }
-                            }
-                            TextButton({ creating = true }) { Text("New folder…") }
-                        }
-                    }
-                },
-                confirmButton = {
-                    if (creating) TextButton({ a.newFolder(app, name); creating = false; name = "" }) { Text("Create") }
-                    else TextButton({ folderPickerFor = null }) { Text("Done") }
-                },
-                dismissButton = { if (creating) TextButton({ creating = false }) { Text("Back") } },
-            )
-        }
+    }
+    menuFor?.let { app -> AppSheet(app, s, a) { menuFor = null } }
+    folderMenu?.let { name -> FolderSheet(name, s, a) { folderMenu = null } }
     }
 }
 
@@ -390,12 +337,12 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
         LazyColumn {
             item {
                 SectionLabel("Display")
-                SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }) }
+                SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }, colors = monoSwitchColors()) }
                 ChoiceRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
-                SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }) }
+                SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }, colors = monoSwitchColors()) }
                 SectionLabel("Gestures")
                 ChoiceRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
-                SettingRow("Show swipe hint", "A faint arrow showing where to swipe", onClick = { a.setShowSwipeHint(!s.showSwipeHint) }) { Switch(s.showSwipeHint, { a.setShowSwipeHint(it) }) }
+                SettingRow("Show swipe hint", "A faint arrow showing where to swipe", onClick = { a.setShowSwipeHint(!s.showSwipeHint) }) { Switch(s.showSwipeHint, { a.setShowSwipeHint(it) }, colors = monoSwitchColors()) }
                 SectionLabel("Permissions")
                 SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
                 SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }

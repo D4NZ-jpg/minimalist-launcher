@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.performTouchInput
 import org.junit.Rule
 import org.junit.Test
@@ -70,6 +71,17 @@ class ScreenshotTest {
     @Test fun dragLow() = shotDrag("drag_low", base.copy(showDrawer = true), 0.85f, startX = 24f, wanderX = 0f)
     @Test fun dragLeftStart() = shotDrag("drag_left_start", base.copy(showDrawer = true), 0.6f, startX = 2f, wanderX = 0f)
     @Test fun dragWander() = shotDrag("drag_wander", base.copy(showDrawer = true), 0.6f, startX = 24f, wanderX = -150f)
+
+    private fun shotLongPress(name: String, s: LauncherState, text: String) {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(s, LauncherActions()) } }
+        rule.onNodeWithText(text).performTouchInput { longClick() }
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(600)
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
+    @Test fun sheetApp() = shotLongPress("sheet_app", base, "Calendar")
+    @Test fun sheetFolder() = shotLongPress("sheet_folder", base.copy(showDrawer = true), "Money")
 
     @Test fun home() = shot("home", base)
     @Test fun homeSmall() = shot("home_small", base.copy(textSize = TextSize.Small))
