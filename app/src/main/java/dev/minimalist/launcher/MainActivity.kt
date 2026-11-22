@@ -278,13 +278,13 @@ private fun toggle(list: SnapshotStateList<String>, name: String) { if (!list.re
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit) {
+private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White) {
     Row(
         Modifier.fillMaxWidth().combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) }).padding(vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = Color.White, modifier = Modifier.padding(horizontal = 8.dp))
-        Text(name, color = Color.White, fontSize = size)
+        Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = color, modifier = Modifier.padding(horizontal = 8.dp))
+        Text(name, color = color, fontSize = size)
     }
 }
 
@@ -337,12 +337,13 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
         Row(Modifier.weight(1f)) {
             LazyColumn(Modifier.weight(1f), state = listState) {
                 if (!searching) s.folders.forEach { f ->
-                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(22), { toggle(expanded, f.name) }, onFolderMenu) }
+                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(22), { toggle(expanded, f.name) }, onFolderMenu, Dim) }
                     if (f.name in expanded) {
                         items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(20), 48.dp, a.launch, onAppMenu) }
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("Empty. Long-press an app → Folder…", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
                     }
                 }
+                if (!searching && s.folders.isNotEmpty()) item(key = "divider") { Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.12f))) }
                 items(s.results, key = { it.key }) { app -> AppRow(app, sz(22), 8.dp, a.launch, onAppMenu) }
             }
             if (!searching) AlphabetBar(letters, Modifier.align(Alignment.CenterVertically)) { letter ->
@@ -374,33 +375,16 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
         }
         LazyColumn {
             item {
+                SectionLabel("Display")
                 SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }) }
-                Text("Swipe to open all apps", color = Color.White, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp))
-                Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SwipeDir.entries.forEach { d ->
-                        val on = d == s.swipe
-                        Text(
-                            d.label, color = if (on) Color.Black else Color.White, fontSize = 14.sp,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Color.White else Color(0xFF1E1E1E))
-                                .clickable { a.setSwipe(d) }.padding(horizontal = 14.dp, vertical = 8.dp),
-                        )
-                    }
-                }
-                Text("Text size", color = Color.White, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp))
-                Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextSize.entries.forEach { t ->
-                        val on = t == s.textSize
-                        Text(
-                            t.label, color = if (on) Color.Black else Color.White, fontSize = 14.sp,
-                            modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Color.White else Color(0xFF1E1E1E))
-                                .clickable { a.setTextSize(t) }.padding(horizontal = 14.dp, vertical = 8.dp),
-                        )
-                    }
-                }
+                ChoiceRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
+                SectionLabel("Gestures")
+                ChoiceRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
+                SectionLabel("Permissions")
                 SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
                 SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }
                 SettingRow("Default launcher", "Open Android home settings", onClick = a.openDefaultLauncher)
-                Text("Hidden apps", color = Dim, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 4.dp))
+                SectionLabel("Hidden apps")
                 SettingRow("Hide more apps…", "Choose apps to remove from the app list", onClick = { picking = true })
                 if (s.hiddenApps.isEmpty()) Text("None hidden", color = Color.Gray, modifier = Modifier.padding(8.dp))
             }
@@ -435,6 +419,26 @@ private fun HidePicker(s: LauncherState, a: LauncherActions, onBack: () -> Unit)
                     Checkbox(app.key in s.hiddenKeys, { a.toggleHidden(app) })
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(text.uppercase(), color = Dim, fontSize = 12.sp, letterSpacing = 1.sp, modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 2.dp))
+}
+
+@Composable
+private fun <T> ChoiceRow(title: String, options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
+    Text(title, color = Color.White, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp))
+    Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.forEach { o ->
+            val on = o == selected
+            Text(
+                label(o), color = if (on) Color.Black else Color.White, fontSize = 14.sp,
+                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Color.White else Color(0xFF1E1E1E))
+                    .clickable { onSelect(o) }.padding(horizontal = 14.dp, vertical = 8.dp),
+            )
         }
     }
 }
