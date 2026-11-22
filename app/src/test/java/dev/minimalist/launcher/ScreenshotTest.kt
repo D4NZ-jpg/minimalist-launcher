@@ -6,6 +6,9 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performTouchInput
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -34,7 +37,7 @@ class ScreenshotTest {
         return b.asImageBitmap()
     }
 
-    private val all = listOf("Alarms", "Books", "Calculator", "Calendar", "Camera", "Wallet", "Clock", "Compass", "Files", "Maps", "Music", "Notes", "Phone", "Stopwatch", "Timer", "Weather", "Contacts", "Messages").map(::app)
+    private val all = listOf("Alarms", "Books", "Calculator", "Calendar", "Camera", "Wallet", "Clock", "Compass", "Files", "Maps", "Music", "Notes", "Podcasts", "Phone", "Photos", "Recorder", "Stopwatch", "Timer", "Translate", "Weather", "Tasks", "Contacts", "Messages", "Videos").map(::app)
     private val base = LauncherState(
         time = "10:43 AM", date = "Sunday, 22nd November", battery = 80, usage = "Today's Usage: 1h 34m",
         favourites = listOf("Messages", "Contacts", "Calendar", "Music", "Weather", "Compass", "Files").map(::app),
@@ -47,6 +50,19 @@ class ScreenshotTest {
         rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(s, LauncherActions()) } }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
+
+    private fun shotDrag(name: String, s: LauncherState, frac: Float) {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(s, LauncherActions()) } }
+        rule.onNodeWithTag("alphabet").performTouchInput {
+            down(Offset(centerX, height * 0.05f))
+            moveTo(Offset(centerX, height * frac))   // finger slides down the strip and is still held
+        }
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+
+    @Test fun dragMid() = shotDrag("drag_mid", base.copy(showDrawer = true), 0.45f)
+    @Test fun dragLow() = shotDrag("drag_low", base.copy(showDrawer = true), 0.85f)
 
     @Test fun home() = shot("home", base)
     @Test fun drawer() = shot("drawer", base.copy(showDrawer = true))

@@ -53,6 +53,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -397,22 +404,53 @@ private fun BellIcon(slashed: Boolean) {
     }
 }
 
-/** Right-edge A–Z strip: tap or drag to jump to a letter. */
+/**
+ * Right-edge A–Z strip. While touched, letters bow toward the finger along a curve,
+ * the letter under the finger grows, and a bubble with that letter follows it.
+ */
 @Composable
 private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char) -> Unit) {
+    val density = LocalDensity.current
+    val haptics = LocalHapticFeedback.current
     var height by remember { mutableIntStateOf(1) }
     var last by remember { mutableStateOf<Char?>(null) }
+    var touchY by remember { mutableStateOf<Float?>(null) }
+    val itemPx = with(density) { 16.dp.toPx() }
+    val maxShift = with(density) { 36.dp.toPx() }
+    val sigma = itemPx * 3.2f
+
     fun pick(y: Float) {
         if (letters.isEmpty()) return
+        touchY = y.coerceIn(0f, height.toFloat())
         val l = letters[(y / height * letters.size).toInt().coerceIn(0, letters.size - 1)]
-        if (l != last) { last = l; onLetter(l) }
+        if (l != last) { last = l; haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove); onLetter(l) }
     }
-    Column(
-        modifier.width(32.dp).onSizeChanged { height = it.height.coerceAtLeast(1) }
-            .pointerInput(letters) { detectDragGestures(onDragStart = { pick(it.y) }, onDragEnd = { last = null }) { c, _ -> pick(c.position.y) } }
-            .pointerInput(letters) { detectTapGestures { pick(it.y) } },
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        letters.forEach { Box(Modifier.height(16.dp), contentAlignment = Alignment.Center) { Text(it.toString(), color = Dim, fontSize = 11.sp) } }
+    fun release() { touchY = null; last = null }
+
+    Box(modifier.width(32.dp)) {
+        Column(
+            Modifier.fillMaxWidth().testTag("alphabet").onSizeChanged { height = it.height.coerceAtLeast(1) }
+                .pointerInput(letters) { detectDragGestures(onDragStart = { pick(it.y) }, onDragEnd = ::release, onDragCancel = ::release) { c, _ -> pick(c.position.y) } }
+                .pointerInput(letters) { detectTapGestures(onPress = { pick(it.y); if (tryAwaitRelease()) release() }) },
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            letters.forEachIndexed { i, ch ->
+                val d = touchY?.let { ((i + 0.5f) * itemPx - it) / sigma }
+                val pull = if (d == null) 0f else kotlin.math.exp(-d * d)
+                Box(
+                    Modifier.height(16.dp).fillMaxWidth()
+                        .offset { IntOffset((-maxShift * pull).toInt(), 0) }
+                        .graphicsLayer { val sc = 1f + 0.6f * pull; scaleX = sc; scaleY = sc },
+                    contentAlignment = Alignment.Center,
+                ) { Text(ch.toString(), color = Color.White.copy(alpha = 0.55f + 0.45f * pull), fontSize = 11.sp) }
+            }
+        }
+        touchY?.let { y ->
+            Box(
+                Modifier.offset { IntOffset(-with(density) { 96.dp.roundToPx() }, (y - with(density) { 28.dp.toPx() }).toInt()) }
+                    .requiredSize(56.dp).clip(CircleShape).background(Color(0xFF2A2A2A)).border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) { Text((last ?: ' ').toString(), color = Color.White, fontSize = 28.sp) }
+        }
     }
 }
