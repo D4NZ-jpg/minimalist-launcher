@@ -249,27 +249,27 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
 @Composable
 private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateList<String>, onAppMenu: (AppEntry) -> Unit, onFolderMenu: (String) -> Unit) {
     Column(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxWidth().padding(top = 48.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(s.time, color = Color.White, fontSize = sz(48))
-            Text(s.date, color = Dim, fontSize = 16.sp)
+        Column(Modifier.fillMaxWidth().padding(top = 36.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(s.time, color = Color.White, fontSize = sz(40))
+            Text(s.date, color = Dim, fontSize = 14.sp)
             Spacer(Modifier.height(6.dp))
             BatteryIcon(s.battery, s.charging)
         }
         // Scrolls when favourites + folders overflow. Disabled for swipe-up, where a vertical
         // scroller would swallow the gesture that opens the app list.
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState(), enabled = s.swipe != SwipeDir.Up).padding(top = 48.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState(), enabled = s.swipe != SwipeDir.Up).padding(top = 32.dp)) {
             s.favourites.forEach { app ->
                 Text(
-                    app.label, color = Color.White, fontSize = sz(24),
-                    modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { a.launch(app) }, onLongClick = { onAppMenu(app) }).padding(vertical = 12.dp, horizontal = 8.dp)
+                    app.label, color = Color.White, fontSize = sz(20),
+                    modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { a.launch(app) }, onLongClick = { onAppMenu(app) }).padding(vertical = 9.dp, horizontal = 8.dp)
                 )
             }
-            s.folders.forEach { f -> FolderBlock(f, f.name in expanded, sz(24), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
+            s.folders.forEach { f -> FolderBlock(f, f.name in expanded, sz(20), { toggle(expanded, f.name) }, a.launch, onAppMenu, onFolderMenu) }
             if (s.favourites.isEmpty() && s.folders.isEmpty()) Text("Swipe ${when (s.swipe) { SwipeDir.Up -> "up"; SwipeDir.Left -> "left"; SwipeDir.Right -> "right" }}, long-press an app, add to home", color = Color.Gray, modifier = Modifier.padding(8.dp))
         }
         if (s.swipe == SwipeDir.Up) Icon(Icons.Default.KeyboardArrowUp, "Swipe up for all apps", tint = Color.White.copy(alpha = 0.55f), modifier = Modifier.align(Alignment.CenterHorizontally))
         Text(
-            s.usage, color = Dim, fontSize = 15.sp, textAlign = TextAlign.Center,
+            s.usage, color = Dim, fontSize = 13.sp, textAlign = TextAlign.Center,
             modifier = Modifier.fillMaxWidth().then(if (s.usageGranted) Modifier else Modifier.clickable { a.openUsageAccess() }).padding(bottom = 12.dp)
         )
         Row(Modifier.fillMaxWidth().padding(bottom = 24.dp), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -284,7 +284,7 @@ private fun toggle(list: SnapshotStateList<String>, name: String) { if (!list.re
 @Composable
 private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White) {
     Row(
-        Modifier.fillMaxWidth().combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) }).padding(vertical = 12.dp),
+        Modifier.fillMaxWidth().combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) }).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = color, modifier = Modifier.padding(horizontal = 8.dp))
@@ -341,14 +341,14 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
         Row(Modifier.weight(1f)) {
             LazyColumn(Modifier.weight(1f), state = listState) {
                 if (!searching) s.folders.forEach { f ->
-                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(22), { toggle(expanded, f.name) }, onFolderMenu, Dim) }
+                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim) }
                     if (f.name in expanded) {
-                        items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(20), 48.dp, a.launch, onAppMenu) }
+                        items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("Empty. Long-press an app → Folder…", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
                     }
                 }
                 if (!searching && s.folders.isNotEmpty()) item(key = "divider") { Box(Modifier.padding(vertical = 8.dp).fillMaxWidth().height(1.dp).background(Color.White.copy(alpha = 0.12f))) }
-                items(s.results, key = { it.key }) { app -> AppRow(app, sz(22), 8.dp, a.launch, onAppMenu) }
+                items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
             }
             if (!searching) AlphabetBar(letters, Modifier.align(Alignment.CenterVertically)) { letter ->
                 val i = s.results.indexOfFirst { it.letter() == letter }
@@ -363,7 +363,7 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
 private fun AppRow(app: AppEntry, size: androidx.compose.ui.unit.TextUnit, start: androidx.compose.ui.unit.Dp, onLaunch: (AppEntry) -> Unit, onMenu: (AppEntry) -> Unit) {
     Text(
         app.label, color = Color.White, fontSize = size,
-        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onMenu(app) }).padding(start = start, top = 12.dp, bottom = 12.dp)
+        modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onMenu(app) }).padding(start = start, top = 9.dp, bottom = 9.dp)
     )
 }
 
@@ -469,7 +469,7 @@ private fun SettingRow(title: String, subtitle: String?, onClick: () -> Unit, tr
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun DockIcon(app: AppEntry, onLaunch: (AppEntry) -> Unit, onMenu: (AppEntry) -> Unit) {
-    val mod = Modifier.size(56.dp).clip(CircleShape).background(Color(0xFF222222)).border(1.dp, Color(0xFF3A3A3A), CircleShape)
+    val mod = Modifier.size(48.dp).clip(CircleShape).background(Color(0xFF222222)).border(1.dp, Color(0xFF3A3A3A), CircleShape)
         .combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onMenu(app) })
     val icon = app.icon
     Box(mod, contentAlignment = Alignment.Center) {
