@@ -445,7 +445,10 @@ private fun <T> ChoiceRow(title: String, options: List<T>, selected: T, label: (
 
 @Composable
 private fun StatusText(on: Boolean) {
-    Text(if (on) "On" else "Off", color = if (on) Color.White else Dim, fontSize = 15.sp)
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(if (on) "On" else "Off", color = if (on) Color.White else Dim, fontSize = 15.sp)
+        Text("  ›", color = Dim, fontSize = 22.sp)
+    }
 }
 
 @Composable
@@ -466,7 +469,7 @@ private fun DockIcon(app: AppEntry, onLaunch: (AppEntry) -> Unit, onMenu: (AppEn
         .combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onMenu(app) })
     val icon = app.icon
     Box(mod, contentAlignment = Alignment.Center) {
-        if (icon != null) Image(icon, app.label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }))
+        if (icon != null) Image(icon, app.label, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.8f, colorFilter = ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0f) }))
         else Text(app.label.take(1), color = Color.White, fontSize = 20.sp)
     }
 }
@@ -541,7 +544,7 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
                         .offset { IntOffset((peakShift * pull).toInt(), 0) }
                         .graphicsLayer { val sc = 1f + 0.6f * pull; scaleX = sc; scaleY = sc },
                     contentAlignment = Alignment.Center,
-                ) { Text(ch.toString(), color = Color.White.copy(alpha = 0.6f + 0.4f * pull), fontSize = 12.sp) }
+                ) { Text(ch.toString(), color = Color.White.copy(alpha = 0.75f + 0.25f * pull), fontSize = 13.sp) }
             }
         }
         touchY?.let { y ->

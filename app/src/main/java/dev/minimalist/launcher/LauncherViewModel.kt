@@ -65,7 +65,9 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun updateResults() {
         val q = query.trim().lowercase()
-        results = all.filter { q.isEmpty() && it.key !in hiddenKeys || q.isNotEmpty() && it.label.lowercase().contains(q) }
+        results = if (q.isEmpty()) all.filter { it.key !in hiddenKeys }
+        else all.filter { it.label.lowercase().contains(q) }
+            .sortedWith(compareBy({ !it.label.lowercase().startsWith(q) }, { it.label.lowercase() }))
     }
 
     fun launch(a: AppEntry) { repo.launch(a); query = ""; showDrawer = false; updateResults() }
