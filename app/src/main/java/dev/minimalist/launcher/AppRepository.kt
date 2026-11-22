@@ -3,6 +3,7 @@ package dev.minimalist.launcher
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.graphics.Bitmap
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.net.Uri
@@ -82,6 +83,20 @@ class AppRepository(private val context: Context) {
     var swipe: SwipeDir
         get() = SwipeDir.entries.firstOrNull { it.name == prefs.getString("swipe", null) } ?: SwipeDir.Up
         set(v) { prefs.edit().putString("swipe", v.name).apply() }
+
+    fun replaceFavourites(keys: List<String>) { prefs.edit().putString("favs", keys.distinct().joinToString("\n")).apply() }
+    fun replaceDock(keys: List<String>) { prefs.edit().putString("dock", keys.distinct().take(5).joinToString("\n")).apply() }
+    fun replaceHidden(keys: Collection<String>) { prefs.edit().putStringSet("hidden", keys.toSet()).apply() }
+
+    /** Replaces every folder. Folder order follows the map's iteration order. */
+    fun replaceFolders(folders: Map<String, List<String>>) {
+        val cleaned = folders.mapKeys { cleanFolderName(it.key) }.filterKeys { it.isNotEmpty() }
+        prefs.edit().putString("folders", cleaned.keys.joinToString("\n")).apply()
+        writeMap(cleaned.mapValues { it.value.distinct() })
+    }
+
+    fun registerChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener) = prefs.registerOnSharedPreferenceChangeListener(l)
+    fun unregisterChangeListener(l: SharedPreferences.OnSharedPreferenceChangeListener) = prefs.unregisterOnSharedPreferenceChangeListener(l)
 
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 

@@ -29,7 +29,16 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var dndGranted by mutableStateOf(false); private set
     var dnd by mutableStateOf(false); private set
 
-    init { refresh(); refreshSystem() }
+    // Reload when something else (the ADB agent receiver) changes the stored layout.
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val reload = Runnable { refresh() }
+    private val prefsListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+        handler.removeCallbacks(reload); handler.postDelayed(reload, 150)
+    }
+
+    init { refresh(); refreshSystem(); repo.registerChangeListener(prefsListener) }
+
+    override fun onCleared() { repo.unregisterChangeListener(prefsListener); handler.removeCallbacks(reload) }
 
     fun refresh() {
         all = repo.loadApps()

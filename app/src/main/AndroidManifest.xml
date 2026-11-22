@@ -28,5 +28,14 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <!-- ADB-only agent channel: DUMP is held by the shell user, not by ordinary apps. -->
+        <receiver
+            android:name=".AgentReceiver"
+            android:exported="true"
+            android:permission="android.permission.DUMP">
+            <intent-filter>
+                <action android:name="dev.minimalist.launcher.AGENT" />
+            </intent-filter>
+        </receiver>
     </application>
 </manifest>
