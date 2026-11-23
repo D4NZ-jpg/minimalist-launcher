@@ -160,6 +160,23 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
     }
 }
 
+/** Lists what a gesture can do. Picking "Open an app" is followed by an app picker. */
+@Composable
+fun GestureSheet(gesture: Gesture, current: GestureBinding, accessibilityOn: Boolean, onPick: (GestureAction) -> Unit, onDismiss: () -> Unit) {
+    SheetHost(onDismiss) {
+        SheetTitle(gesture.label)
+        ChoosableActions.forEach { act ->
+            Row(Modifier.fillMaxWidth().clickable { onPick(act) }.padding(vertical = 11.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(act.label, color = Color.White, fontSize = 16.sp)
+                    if (act == GestureAction.LockScreen && !accessibilityOn) Text("Needs the Accessibility service (Settings)", color = Dim, fontSize = 13.sp)
+                }
+                if (act == current.action) Text("✓", color = Color.White, fontSize = 18.sp)
+            }
+        }
+    }
+}
+
 /** One-time first-launch offer to become the default home app. */
 @Composable
 fun HomePromptSheet(onSet: () -> Unit, onNotNow: () -> Unit) {

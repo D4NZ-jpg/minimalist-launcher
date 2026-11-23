@@ -66,6 +66,8 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -98,6 +100,7 @@ import java.util.Locale
 internal val Bg = Color(0xFF0B0B0B)
 private val LocalTextScale = compositionLocalOf { 1f }
 private val LocalAddApps = staticCompositionLocalOf<(String) -> Unit> { {} }
+private val LocalChooseGesture = staticCompositionLocalOf<(Gesture) -> Unit> { {} }
 @Composable private fun sz(v: Int) = (v * LocalTextScale.current).sp
 
 internal val Dim = Color.White.copy(alpha = 0.7f)
@@ -188,6 +191,8 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
     var folderMenu by remember { mutableStateOf<String?>(null) }
     var pickFolder by remember { mutableStateOf<String?>(null) }
+    var chooseFor by remember { mutableStateOf<Gesture?>(null) }
+    var pickAppFor by remember { mutableStateOf<Gesture?>(null) }
     val expanded = remember { mutableStateListOf<String>() }
 
     BackHandler(enabled = s.showSettings) { a.showSettings(false) }
@@ -277,7 +282,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
                 }
             }
     ) {
-        CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }) {
+        CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }, LocalChooseGesture provides { chooseFor = it }) {
             if (homeVisible) Box(
                 Modifier.fillMaxSize()
                     .offset {
@@ -322,6 +327,17 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     menuFor?.let { app -> AppSheet(app, s, a) { menuFor = null } }
     folderMenu?.let { name -> FolderSheet(name, s, a, onDismiss = { folderMenu = null }, onAddApps = { pickFolder = name; folderMenu = null }) }
     if (s.showHomePrompt && !s.showSettings) HomePromptSheet(onSet = a.openDefaultLauncher, onNotNow = a.dismissHomePrompt)
+    chooseFor?.let { g ->
+        GestureSheet(g, s.gestures[g] ?: GestureBinding(GestureAction.None), s.accessibilityOn,
+            onPick = { act -> if (act == GestureAction.LaunchApp) pickAppFor = g else a.setGesture(g, GestureBinding(act)); chooseFor = null },
+            onDismiss = { chooseFor = null })
+    }
+    pickAppFor?.let { g ->
+        BackHandler { pickAppFor = null }
+        Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
+            AppPickerScreen("Open which app?", s.allApps, { it.key == s.gestures[g]?.appKey }, { app -> a.setGesture(g, GestureBinding(GestureAction.LaunchApp, app.key)); pickAppFor = null }) { pickAppFor = null }
+        }
+    }
     pickFolder?.let { name ->
         BackHandler { pickFolder = null }
         Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
@@ -416,6 +432,9 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
     val searching = s.query.isNotEmpty()
+    val searchFocus = remember { FocusRequester() }
+    // The "Search apps" gesture opens the list with the keyboard ready.
+    LaunchedEffect(s.focusSearch) { if (s.focusSearch) { runCatching { searchFocus.requestFocus() }; a.consumeSearchFocus() } }
     val letters = remember(s.results) { s.results.map { it.letter() }.distinct() }
     val headerCount = if (searching) 0 else s.folders.sumOf { 1 + if (it.name in expanded) maxOf(it.apps.size, 1) else 0 }
 
@@ -425,7 +444,7 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
                 value = s.query, onValueChange = a.query, singleLine = true, shape = RoundedCornerShape(50),
                 placeholder = { Text("Search apps") }, leadingIcon = { Icon(Icons.Default.Search, null) },
                 trailingIcon = { if (s.query.isNotEmpty()) IconButton({ a.query("") }) { Icon(Icons.Default.Close, "Clear") } },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).focusRequester(searchFocus),
                 colors = TextFieldDefaults.colors(
                     focusedContainerColor = Color(0xFF1E1E1E), unfocusedContainerColor = Color(0xFF1E1E1E),
                     focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
@@ -489,10 +508,20 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
                 SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }, colors = monoSwitchColors()) }
                 SectionLabel("Gestures")
                 CycleRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
+                Gesture.entries.filter { it != s.swipe.gesture() }.forEach { g ->
+                    val b = s.gestures[g] ?: GestureBinding(GestureAction.None)
+                    val choose = LocalChooseGesture.current
+                    val label = if (b.action == GestureAction.LaunchApp) (s.allApps.firstOrNull { it.key == b.appKey }?.label ?: "Choose an app") else b.action.label
+                    SettingRow(g.label, null, onClick = { choose(g) }) {
+                        Text(label, color = Dim, fontSize = 15.sp, modifier = Modifier.padding(end = 4.dp))
+                        Text("›", color = Dim, fontSize = 22.sp)
+                    }
+                }
                 SettingRow("Show swipe hint", "A faint arrow showing where to swipe", onClick = { a.setShowSwipeHint(!s.showSwipeHint) }) { Switch(s.showSwipeHint, { a.setShowSwipeHint(it) }, colors = monoSwitchColors()) }
                 SectionLabel("Permissions")
                 SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
                 SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }
+                SettingRow("Accessibility service", "Needed to lock the screen, and as a backup for notifications", onClick = a.openAccessibility) { StatusText(s.accessibilityOn) }
                 SettingRow("Home app", if (s.isDefaultHome) "This launcher opens when you press Home" else "Not your home app. Tap to set it", onClick = a.openDefaultLauncher) {
                     Text(if (s.isDefaultHome) "Yes" else "No", color = if (s.isDefaultHome) Color.White else Dim, fontSize = 15.sp)
                 }

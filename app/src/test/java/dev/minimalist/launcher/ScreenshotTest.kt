@@ -181,6 +181,33 @@ class ScreenshotTest {
         assertTrue(rule.onAllNodesWithText("Remove from home").fetchSemanticsNodes().isNotEmpty())
     }
 
+    @Test fun choosingAnActionForAGesture() {
+        var set: Pair<Gesture, GestureBinding>? = null
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showSettings = true, gestures = Gesture.entries.associateWith { GestureBinding(GestureAction.None) }), LauncherActions(setGesture = { g, b -> set = g to b })) } }
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Double tap").performClick()
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Toggle flashlight").performClick()
+        assertEquals(Gesture.DoubleTap to GestureBinding(GestureAction.Flashlight), set)
+    }
+
+    @Test fun choosingAnAppForAGesture() {
+        var set: Pair<Gesture, GestureBinding>? = null
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showSettings = true, allApps = all, gestures = Gesture.entries.associateWith { GestureBinding(GestureAction.None) }), LauncherActions(setGesture = { g, b -> set = g to b })) } }
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Swipe left").performClick()
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Open an app").performClick()
+        rule.mainClock.advanceTimeBy(300)
+        rule.onNodeWithText("Camera").performClick()
+        assertEquals(Gesture.SwipeLeft to GestureBinding(GestureAction.LaunchApp, app("Camera").key), set)
+    }
+
+    @Test fun gestureSettingsScreenshot() = foldShot("gestures_settings", base.copy(showSettings = true, accessibilityOn = false,
+        gestures = Gesture.entries.associateWith { when (it) { Gesture.SwipeDown -> GestureBinding(GestureAction.Notifications); Gesture.LongPress -> GestureBinding(GestureAction.LauncherSettings); Gesture.DoubleTap -> GestureBinding(GestureAction.LockScreen); Gesture.SwipeLeft -> GestureBinding(GestureAction.LaunchApp, app("Camera").key); else -> GestureBinding(GestureAction.None) } },
+        allApps = all))
+    @Test fun gestureChooserScreenshot() = foldShot("gestures_chooser", base.copy(showSettings = true, gestures = Gesture.entries.associateWith { GestureBinding(GestureAction.None) })) { rule.onNodeWithText("Double tap").performClick() }
+
     @Test fun layersFollowTheFingerAndBothMove() {
         val called = followSetup(SwipeDir.Left)
         val rest = filesXs().single()
