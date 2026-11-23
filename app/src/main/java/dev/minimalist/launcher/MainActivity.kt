@@ -284,13 +284,14 @@ private fun toggle(list: SnapshotStateList<String>, name: String) { if (!list.re
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White, drag: Modifier? = null) {
+private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White, drag: Modifier? = null, info: String? = null) {
     Row(
         Modifier.fillMaxWidth().then(if (drag != null) Modifier.onTap(name, onToggle).then(drag) else Modifier.combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) })).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = color, modifier = Modifier.padding(horizontal = 8.dp))
-        Text(name, color = color, fontSize = size)
+        Text(name, color = color, fontSize = size, modifier = Modifier.weight(1f))
+        if (info != null) Text(info, color = Dim, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
     }
 }
 
@@ -308,7 +309,7 @@ private fun FolderBlock(
                 modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onAppMenu(app) }).padding(start = 48.dp, top = 8.dp, bottom = 8.dp)
             )
         }
-        if (f.apps.isEmpty()) Text("Empty. Long-press an app → Folder…", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp))
+        if (f.apps.isEmpty()) Text("No apps yet. Long-press an app and tick this folder.", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp))
     }
 }
 
@@ -343,10 +344,10 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
         Row(Modifier.weight(1f)) {
             LazyColumn(Modifier.weight(1f), state = listState) {
                 if (!searching) s.folders.forEach { f ->
-                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim) }
+                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim, info = "${f.apps.size}" + if (s.homeFolders.any { it.name == f.name }) " · on home" else "") }
                     if (f.name in expanded) {
                         items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
-                        if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("Empty. Long-press an app → Folder…", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
+                        if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("No apps yet. Long-press an app and tick this folder.", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
                     }
                 }
                 items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }

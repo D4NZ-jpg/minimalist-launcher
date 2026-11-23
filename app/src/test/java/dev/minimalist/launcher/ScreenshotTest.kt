@@ -158,6 +158,24 @@ class ScreenshotTest {
         rule.onRoot().captureRoboImage("build/screenshots/drag_row.png")
     }
 
+    /** Screens for the folder flow: runs [steps] on the composed UI, then captures. */
+    private fun foldShot(name: String, s: LauncherState, steps: () -> Unit = {}) {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(s, LauncherActions()) } }
+        steps()
+        rule.waitForIdle()
+        rule.mainClock.advanceTimeBy(600)
+        rule.onRoot().captureRoboImage("build/screenshots/$name.png")
+    }
+    private fun longPress(text: String) { rule.onNodeWithText(text).performTouchInput { down(center); advanceEventTime(700); up() }; rule.waitForIdle() }
+    private val inDrawer get() = base.copy(showDrawer = true)
+
+    @Test fun foldAppSheet() = foldShot("fold_app_sheet", inDrawer) { longPress("Wallet") }
+    @Test fun foldNewFolder() = foldShot("fold_new_folder", inDrawer) { longPress("Wallet"); rule.onNodeWithText("+ New folder").performClick() }
+    @Test fun foldFolderSheet() = foldShot("fold_folder_sheet", inDrawer) { longPress("Money") }
+    @Test fun foldDrawerExpanded() = foldShot("fold_drawer_expanded", inDrawer) { rule.onNodeWithText("Money").performClick(); rule.onNodeWithText("Tools").performClick() }
+    @Test fun foldHomeExpanded() = foldShot("fold_home_expanded", base) { rule.onNodeWithText("Tools").performClick() }
+    @Test fun foldEmptyFolder() = foldShot("fold_empty", inDrawer.copy(folders = base.folders + FolderUi("Games", emptyList()))) { rule.onNodeWithText("Games").performClick() }
+
     @Test fun sheetApp() = shotLongPress("sheet_app", base, "Calendar")
     @Test fun sheetFolder() = shotLongPress("sheet_folder", base.copy(showDrawer = true), "Money")
 

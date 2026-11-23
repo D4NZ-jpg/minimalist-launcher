@@ -115,7 +115,7 @@ fun <T> ReorderColumn(
                     .onSizeChanged { heights[k] = it.height }
                     .offset { IntOffset(0, if (dragging) dragY.roundToInt() else shift) }
                     .then(if (dragging) Modifier.background(Color(0xFF1E1E1E), RoundedCornerShape(12.dp)) else Modifier)
-            ) { content(item, drag) }
+            ) { Column { content(item, drag) } }
         }
     }
 }

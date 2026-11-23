@@ -92,15 +92,18 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
         ToggleRow("Show on home", favIndex >= 0) { a.toggleFavourite(app) }
         ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
         ToggleRow("Hide from app list", app.key in s.hiddenKeys) { a.toggleHidden(app) }
-        SheetLabel("Folders")
+        SheetLabel("Add to folders")
         s.folders.forEach { f ->
             val member = f.apps.any { it.key == app.key }
-            Row(Modifier.fillMaxWidth().clickable { a.toggleFolder(app, f.name) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clickable { a.toggleFolder(app, f.name) }, verticalAlignment = Alignment.CenterVertically) {
                 Text(f.name, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
-                if (member) Text("✓", color = Color.White, fontSize = 18.sp)
+                Checkbox(member, { a.toggleFolder(app, f.name) }, colors = monoCheckboxColors())
             }
         }
-        if (!creating) Text("+ New folder", color = Dim, fontSize = 16.sp, modifier = Modifier.clickable { creating = true }.padding(vertical = 10.dp))
+        if (s.folders.isEmpty()) Text("No folders yet.", color = Dim, fontSize = 14.sp, modifier = Modifier.padding(vertical = 8.dp))
+        if (s.folders.any { f -> f.apps.any { it.key == app.key } } && !s.showFolderedApps)
+            Text("Apps in a folder are listed only inside their folders.", color = Dim, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+        if (!creating) Text("+ New folder", color = Color.White, fontSize = 16.sp, modifier = Modifier.clickable { creating = true }.padding(vertical = 12.dp))
         if (creating) {
             TextField(
                 value = name, onValueChange = { name = it }, singleLine = true, shape = RoundedCornerShape(50),
@@ -112,7 +115,7 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { a.newFolder(app, name); creating = false; name = "" }),
-                trailingIcon = { TextButton({ a.newFolder(app, name); creating = false; name = "" }) { Text("Add") } },
+                trailingIcon = { TextButton({ a.newFolder(app, name); creating = false; name = "" }, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) { Text("Create") } },
             )
         }
         Text(
@@ -129,6 +132,10 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
         SheetTitle(folder)
         ToggleRow("Show on home", i >= 0) { a.toggleHomeFolder(folder) }
         Text(
+            if (i >= 0) "This folder is on the home screen. Drag it there to reorder." else "Folders stay in the app list until you show them on home.",
+            color = Dim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp),
+        )
+        Text(
             "Delete folder", color = Dim, fontSize = 16.sp,
             modifier = Modifier.padding(top = 12.dp).clickable { a.deleteFolder(folder); onDismiss() }.padding(vertical = 8.dp),
         )
@@ -140,4 +147,10 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
 internal fun monoSwitchColors() = SwitchDefaults.colors(
     checkedThumbColor = Color.Black, checkedTrackColor = Color.White, checkedBorderColor = Color.White,
     uncheckedThumbColor = Color(0xFF9A9A9A), uncheckedTrackColor = Color(0xFF1E1E1E), uncheckedBorderColor = Color(0xFF555555),
+)
+
+/** Black-and-white checkbox. */
+@Composable
+internal fun monoCheckboxColors() = CheckboxDefaults.colors(
+    checkedColor = Color.White, uncheckedColor = Color(0xFF8A8A8A), checkmarkColor = Color.Black,
 )
