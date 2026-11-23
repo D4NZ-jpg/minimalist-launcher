@@ -15,6 +15,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,7 +57,7 @@ private fun SheetHost(onDismiss: () -> Unit, content: @Composable ColumnScope.()
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(SheetBg)
                     .pointerInput(Unit) { detectTapGestures { } }
-                    .navigationBarsPadding().padding(horizontal = 20.dp, vertical = 20.dp),
+                    .navigationBarsPadding().heightIn(max = 600.dp).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp),
                 content = content,
             )
         }
@@ -81,17 +83,6 @@ private fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit) {
 }
 
 @Composable
-private fun ActionChip(label: String, enabled: Boolean = true, selected: Boolean = false, onClick: () -> Unit) {
-    Text(
-        label, fontSize = 14.sp,
-        color = if (selected) Color.Black else if (enabled) Color.White else Color.White.copy(alpha = 0.3f),
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(if (selected) Color.White else Chip)
-            .clickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp, vertical = 9.dp),
-    )
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
 fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () -> Unit) {
     val favIndex = s.favourites.indexOfFirst { it.key == app.key }
     var creating by remember { mutableStateOf(false) }
@@ -102,10 +93,14 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
         ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
         ToggleRow("Hide from app list", app.key in s.hiddenKeys) { a.toggleHidden(app) }
         SheetLabel("Folders")
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            s.folders.forEach { f -> ActionChip(f.name, selected = f.apps.any { it.key == app.key }) { a.toggleFolder(app, f.name) } }
-            if (!creating) ActionChip("+ New folder") { creating = true }
+        s.folders.forEach { f ->
+            val member = f.apps.any { it.key == app.key }
+            Row(Modifier.fillMaxWidth().clickable { a.toggleFolder(app, f.name) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(f.name, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                if (member) Text("✓", color = Color.White, fontSize = 18.sp)
+            }
         }
+        if (!creating) Text("+ New folder", color = Dim, fontSize = 16.sp, modifier = Modifier.clickable { creating = true }.padding(vertical = 10.dp))
         if (creating) {
             TextField(
                 value = name, onValueChange = { name = it }, singleLine = true, shape = RoundedCornerShape(50),

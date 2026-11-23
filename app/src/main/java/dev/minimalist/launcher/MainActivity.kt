@@ -381,10 +381,10 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
             item {
                 SectionLabel("Display")
                 SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }, colors = monoSwitchColors()) }
-                ChoiceRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
+                CycleRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
                 SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }, colors = monoSwitchColors()) }
                 SectionLabel("Gestures")
-                ChoiceRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
+                CycleRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
                 SettingRow("Show swipe hint", "A faint arrow showing where to swipe", onClick = { a.setShowSwipeHint(!s.showSwipeHint) }) { Switch(s.showSwipeHint, { a.setShowSwipeHint(it) }, colors = monoSwitchColors()) }
                 SectionLabel("Permissions")
                 SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
@@ -434,18 +434,11 @@ private fun SectionLabel(text: String) {
     Text(text.uppercase(), color = Dim, fontSize = 12.sp, letterSpacing = 1.sp, modifier = Modifier.padding(start = 8.dp, top = 24.dp, bottom = 2.dp))
 }
 
+/** A row that shows the current choice on the right; tapping it moves to the next option. */
 @Composable
-private fun <T> ChoiceRow(title: String, options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
-    Text(title, color = Color.White, fontSize = 18.sp, modifier = Modifier.padding(start = 8.dp, top = 14.dp))
-    Row(Modifier.padding(horizontal = 8.dp, vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        options.forEach { o ->
-            val on = o == selected
-            Text(
-                label(o), color = if (on) Color.Black else Color.White, fontSize = 14.sp,
-                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (on) Color.White else Color(0xFF1E1E1E))
-                    .clickable { onSelect(o) }.padding(horizontal = 14.dp, vertical = 8.dp),
-            )
-        }
+private fun <T> CycleRow(title: String, options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit) {
+    SettingRow(title, null, onClick = { onSelect(options[(options.indexOf(selected) + 1) % options.size]) }) {
+        Text(label(selected), color = Dim, fontSize = 15.sp)
     }
 }
 
