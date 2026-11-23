@@ -146,7 +146,7 @@ class ScreenshotTest {
         assertEquals("Calendar", launched)
         rule.onNodeWithText("Calendar").performTouchInput { down(center); advanceEventTime(700); up() }
         rule.waitForIdle()
-        assertTrue(rule.onAllNodesWithText("Show on home").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("Remove from home").fetchSemanticsNodes().isNotEmpty())
         assertEquals("Calendar", launched)   // releasing a long-press must not also launch the app
     }
 
@@ -170,7 +170,7 @@ class ScreenshotTest {
     private val inDrawer get() = base.copy(showDrawer = true)
 
     @Test fun foldAppSheet() = foldShot("fold_app_sheet", inDrawer) { rule.onNodeWithText("Money").performClick(); longPress("Wallet") }
-    @Test fun foldNewFolder() = foldShot("fold_new_folder", inDrawer) { rule.onNodeWithText("Money").performClick(); longPress("Wallet"); rule.onAllNodesWithText("+ New folder")[1].performClick() }
+    @Test fun foldNewFolder() = foldShot("fold_new_folder", inDrawer) { rule.onNodeWithText("Money").performClick(); longPress("Wallet"); rule.onNodeWithText("+ New folder").performClick() }
     @Test fun foldFolderSheet() = foldShot("fold_folder_sheet", inDrawer) { longPress("Money") }
     @Test fun foldDrawerExpanded() = foldShot("fold_drawer_expanded", inDrawer) { rule.onNodeWithText("Money").performClick(); rule.onNodeWithText("Tools").performClick() }
     @Test fun foldHomeExpanded() = foldShot("fold_home_expanded", base) { rule.onNodeWithText("Tools").performClick() }
@@ -185,7 +185,7 @@ class ScreenshotTest {
     @Test fun homePromptScreenshot() = foldShot("home_prompt", base.copy(isDefaultHome = false, showHomePrompt = true))
     @Test fun settingsNotDefault() = foldShot("settings_not_default", base.copy(showSettings = true, isDefaultHome = false))
 
-    @Test fun foldCreate() = foldShot("fold_create", inDrawer) { rule.onNodeWithText("+ New folder").performClick() }
+    @Test fun sideStripHasFolderShortcut() = foldShot("fold_strip", inDrawer)
     @Test fun foldPicker() = foldShot("fold_picker", inDrawer.copy(allApps = all)) { longPress("Money"); rule.onNodeWithText("Add apps…").performClick() }
     @Test fun foldEmptyFolder() = foldShot("fold_empty", inDrawer.copy(folders = base.folders + FolderUi("Games", emptyList()))) { rule.onNodeWithText("Games").performClick() }
 

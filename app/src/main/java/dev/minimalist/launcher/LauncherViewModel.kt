@@ -29,6 +29,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var textSize by mutableStateOf(repo.textSize); private set
     var showFolderedApps by mutableStateOf(repo.showFolderedApps); private set
     var showSwipeHint by mutableStateOf(repo.showSwipeHint); private set
+    var showFolderCounts by mutableStateOf(repo.showFolderCounts); private set
     var usageMinutes by mutableStateOf<Long?>(null); private set
     var usageGranted by mutableStateOf(false); private set
     var dndGranted by mutableStateOf(false); private set
@@ -86,12 +87,12 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun uninstall(a: AppEntry) = repo.uninstall(a)
     fun toggleFolder(a: AppEntry, name: String) { repo.toggleFolder(a.key, name); refresh() }
     fun newFolder(a: AppEntry, name: String) { repo.createFolder(name)?.let { repo.addToFolder(a.key, it) }; refresh() }
-    fun createFolder(name: String) { repo.createFolder(name); refresh() }
     fun deleteFolder(name: String) { repo.deleteFolder(name); refresh() }
     fun moveFavourite(a: AppEntry, delta: Int) { repo.moveFavourite(a.key, delta); refresh() }
     fun toggleHomeFolder(name: String) { repo.setHomeFolder(name, name !in homeFolders.map { it.name }); refresh() }
     fun moveHomeFolder(name: String, delta: Int) { repo.moveHomeFolder(name, delta); refresh() }
     fun chooseShowFoldered(on: Boolean) { repo.showFolderedApps = on; showFolderedApps = on; updateResults() }
+    fun chooseShowFolderCounts(on: Boolean) { repo.showFolderCounts = on; showFolderCounts = on }
     fun chooseShowHint(on: Boolean) { repo.showSwipeHint = on; showSwipeHint = on }
     fun chooseTextSize(t: TextSize) { repo.textSize = t; textSize = t }
     fun chooseSwipe(d: SwipeDir) { repo.swipe = d; swipe = d }

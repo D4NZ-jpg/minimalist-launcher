@@ -131,6 +131,10 @@ class AppRepository(private val context: Context) {
         get() = prefs.getBoolean("askedHome", false)
         set(v) { prefs.edit().putBoolean("askedHome", v).apply() }
 
+    var showFolderCounts: Boolean
+        get() = prefs.getBoolean("folderCounts", false)
+        set(v) { prefs.edit().putBoolean("folderCounts", v).apply() }
+
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 
     /** folder name -> member app keys */

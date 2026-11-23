@@ -48,7 +48,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
@@ -95,7 +94,6 @@ private enum class Screen { Home, Drawer, Settings }
 internal val Bg = Color(0xFF0B0B0B)
 private val LocalTextScale = compositionLocalOf { 1f }
 private val LocalAddApps = staticCompositionLocalOf<(String) -> Unit> { {} }
-private val LocalNewFolder = staticCompositionLocalOf<() -> Unit> { {} }
 @Composable private fun sz(v: Int) = (v * LocalTextScale.current).sp
 
 internal val Dim = Color.White.copy(alpha = 0.7f)
@@ -166,14 +164,14 @@ fun LauncherScreen(vm: LauncherViewModel, onRequestHome: () -> Unit) {
         favourites = vm.favourites, dock = vm.dock, folders = vm.folders, homeFolders = vm.homeFolders, results = vm.results,
         allApps = vm.allApps, hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
-        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, isDefaultHome = vm.isDefaultHome, showHomePrompt = !vm.isDefaultHome && !vm.askedHomePrompt, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
+        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, isDefaultHome = vm.isDefaultHome, showFolderCounts = vm.showFolderCounts, showHomePrompt = !vm.isDefaultHome && !vm.askedHomePrompt, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
     )
     val actions = LauncherActions(
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
-        deleteFolder = vm::deleteFolder, createFolder = vm::createFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
-        openDndAccess = vm::openDndAccess, openDefaultLauncher = onRequestHome, dismissHomePrompt = vm::dismissHomePrompt, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
+        deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
+        openDndAccess = vm::openDndAccess, openDefaultLauncher = onRequestHome, dismissHomePrompt = vm::dismissHomePrompt, setShowFolderCounts = vm::chooseShowFolderCounts, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
         moveHomeFolder = vm::moveHomeFolder, setShowFolderedApps = vm::chooseShowFoldered, setShowSwipeHint = vm::chooseShowHint,
     )
     LauncherContent(state, actions)
@@ -185,7 +183,6 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
     var folderMenu by remember { mutableStateOf<String?>(null) }
     var pickFolder by remember { mutableStateOf<String?>(null) }
-    var creatingFolder by remember { mutableStateOf(false) }
     val expanded = remember { mutableStateListOf<String>() }
 
     BackHandler(enabled = s.showSettings) { a.showSettings(false) }
@@ -230,7 +227,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             SwipeDir.Left -> AnimatedContentTransitionScope.SlideDirection.Right
             SwipeDir.Right -> AnimatedContentTransitionScope.SlideDirection.Left
         }
-        CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }, LocalNewFolder provides { creatingFolder = true }) {
+        CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }) {
             AnimatedContent(
                 targetState = screen, label = "screen",
                 transitionSpec = {
@@ -265,7 +262,6 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     menuFor?.let { app -> AppSheet(app, s, a) { menuFor = null } }
     folderMenu?.let { name -> FolderSheet(name, s, a, onDismiss = { folderMenu = null }, onAddApps = { pickFolder = name; folderMenu = null }) }
     if (s.showHomePrompt && !s.showSettings) HomePromptSheet(onSet = a.openDefaultLauncher, onNotNow = a.dismissHomePrompt)
-    if (creatingFolder) NewFolderSheet(onCreate = { n -> a.createFolder(n); pickFolder = cleanFolderName(n); creatingFolder = false }, onDismiss = { creatingFolder = false })
     pickFolder?.let { name ->
         BackHandler { pickFolder = null }
         Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
@@ -314,7 +310,7 @@ private fun toggle(list: SnapshotStateList<String>, name: String) { if (!list.re
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White, drag: Modifier? = null, info: String? = null, onMore: (() -> Unit)? = null) {
+private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White, drag: Modifier? = null, info: String? = null) {
     Row(
         Modifier.fillMaxWidth().then(if (drag != null) Modifier.onTap(name, onToggle).then(drag) else Modifier.combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) })).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -322,7 +318,6 @@ private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.
         Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = color, modifier = Modifier.padding(horizontal = 8.dp))
         Text(name, color = color, fontSize = size, modifier = Modifier.weight(1f))
         if (info != null) Text(info, color = Dim, fontSize = 13.sp, modifier = Modifier.padding(end = 4.dp))
-        if (onMore != null) IconButton(onMore, Modifier.size(36.dp)) { Icon(Icons.Default.MoreVert, "Folder options", tint = Dim, modifier = Modifier.size(20.dp)) }
     }
 }
 
@@ -375,21 +370,23 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
         Row(Modifier.weight(1f)) {
             LazyColumn(Modifier.weight(1f), state = listState) {
                 if (!searching) s.folders.forEach { f ->
-                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim, info = "${f.apps.size}" + if (s.homeFolders.any { it.name == f.name }) " · on home" else "", onMore = { onFolderMenu(f.name) }) }
+                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim, info = listOfNotNull(if (s.showFolderCounts) "${f.apps.size}" else null, if (s.homeFolders.any { it.name == f.name }) "on home" else null).joinToString(" · ").ifEmpty { null }) }
                     if (f.name in expanded) {
                         items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { EmptyFolderHint(f.name) }
                     }
                 }
-                if (!searching) item(key = "new-folder") {
-                    val newFolder = LocalNewFolder.current
-                    Text("+ New folder", color = Dim, fontSize = sz(15), modifier = Modifier.fillMaxWidth().clickable { newFolder() }.padding(start = 12.dp, top = 8.dp, bottom = 12.dp))
-                }
                 items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
             }
-            if (!searching) AlphabetBar(letters, Modifier.align(Alignment.CenterVertically)) { letter ->
-                val i = s.results.indexOfFirst { it.letter() == letter }
-                if (i >= 0) scope.launch { listState.scrollToItem(headerCount + i) }
+            if (!searching) AlphabetBar(
+                (if (s.folders.isNotEmpty()) listOf(FOLDERS) else emptyList()) + letters,
+                Modifier.align(Alignment.CenterVertically),
+            ) { letter ->
+                if (letter == FOLDERS) { scope.launch { listState.scrollToItem(0) } }
+                else {
+                    val i = s.results.indexOfFirst { it.letter() == letter }
+                    if (i >= 0) scope.launch { listState.scrollToItem(headerCount + i) }
+                }
             }
         }
     }
@@ -419,6 +416,7 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
                 SectionLabel("Display")
                 SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }, colors = monoSwitchColors()) }
                 CycleRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
+                SettingRow("Show app count on folders", null, onClick = { a.setShowFolderCounts(!s.showFolderCounts) }) { Switch(s.showFolderCounts, { a.setShowFolderCounts(it) }, colors = monoSwitchColors()) }
                 SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }, colors = monoSwitchColors()) }
                 SectionLabel("Gestures")
                 CycleRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
@@ -551,6 +549,18 @@ private fun BellIcon(slashed: Boolean) {
     }
 }
 
+/** Marks the folder shortcut at the top of the side strip; jumps to the folders at the top of the list. */
+private const val FOLDERS = '\u0001'
+
+@Composable
+private fun FolderGlyph(size: androidx.compose.ui.unit.Dp, color: Color) {
+    Canvas(Modifier.size(size)) {
+        val w = this.size.width; val h = this.size.height
+        drawRoundRect(color, Offset(w * 0.06f, h * 0.30f), Size(w * 0.88f, h * 0.56f), CornerRadius(w * 0.1f), style = Stroke(w * 0.11f))
+        drawRoundRect(color, Offset(w * 0.06f, h * 0.16f), Size(w * 0.40f, h * 0.16f), CornerRadius(w * 0.05f))
+    }
+}
+
 /**
  * Right-edge A–Z strip. While touched, letters bow toward the finger along a curve,
  * the letter under the finger grows, and a bubble with that letter follows it.
@@ -593,7 +603,7 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
                         .offset { IntOffset((peakShift * pull).toInt(), 0) }
                         .graphicsLayer { val sc = 1f + 0.6f * pull; scaleX = sc; scaleY = sc },
                     contentAlignment = Alignment.Center,
-                ) { Text(ch.toString(), color = Color.White.copy(alpha = 0.75f + 0.25f * pull), fontSize = 13.sp) }
+                ) { if (ch == FOLDERS) FolderGlyph(13.dp, Color.White.copy(alpha = 0.75f + 0.25f * pull)) else Text(ch.toString(), color = Color.White.copy(alpha = 0.75f + 0.25f * pull), fontSize = 13.sp) }
             }
         }
         touchY?.let { y ->
@@ -601,7 +611,7 @@ private fun AlphabetBar(letters: List<Char>, modifier: Modifier, onLetter: (Char
                 Modifier.offset { IntOffset(((anchorX ?: 0f) - clearance - with(density) { 84.dp.toPx() }).toInt(), (y - with(density) { 28.dp.toPx() }).toInt()) }
                     .requiredSize(56.dp).clip(CircleShape).background(Color(0xFF2A2A2A)).border(1.dp, Color.White.copy(alpha = 0.5f), CircleShape),
                 contentAlignment = Alignment.Center,
-            ) { Text((last ?: ' ').toString(), color = Color.White, fontSize = 28.sp) }
+            ) { if (last == FOLDERS) FolderGlyph(28.dp, Color.White) else Text((last ?: ' ').toString(), color = Color.White, fontSize = 28.sp) }
         }
     }
 }

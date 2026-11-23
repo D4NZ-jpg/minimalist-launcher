@@ -74,6 +74,17 @@ private fun SheetLabel(text: String) {
     Text(text.uppercase(), color = Dim, fontSize = 12.sp, letterSpacing = 1.sp, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
 }
 
+private val Danger = Color(0xFFE5484D)
+
+/** A plain tappable row. The label itself says what will happen, e.g. "Add to home" / "Remove from home". */
+@Composable
+private fun ActionRow(label: String, subtitle: String? = null, enabled: Boolean = true, color: Color = Color.White, onClick: () -> Unit) {
+    Column(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onClick).padding(vertical = 11.dp)) {
+        Text(label, color = if (enabled) color else Dim, fontSize = 16.sp)
+        if (subtitle != null) Text(subtitle, color = Dim, fontSize = 13.sp)
+    }
+}
+
 @Composable
 private fun ToggleRow(label: String, on: Boolean, subtitle: String? = null, enabled: Boolean = true, onToggle: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onToggle).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -95,10 +106,10 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
     val redundantHide = inFolder && !s.showFolderedApps && app.key !in s.hiddenKeys
     SheetHost(onDismiss) {
         SheetTitle(app.label)
-        ToggleRow("Show on home", favIndex >= 0) { a.toggleFavourite(app) }
-        ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
-        ToggleRow(
-            "Hide from main app list", app.key in s.hiddenKeys,
+        ActionRow(if (favIndex >= 0) "Remove from home" else "Add to home") { a.toggleFavourite(app) }
+        ActionRow(if (s.dock.any { it.key == app.key }) "Remove from dock" else "Add to dock") { a.toggleDock(app) }
+        ActionRow(
+            if (app.key in s.hiddenKeys) "Show in main app list" else "Hide from main app list",
             subtitle = if (redundantHide) "Shown inside its folders only" else null,
             enabled = !redundantHide,
         ) { a.toggleHidden(app) }
@@ -129,10 +140,8 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
                 trailingIcon = { TextButton({ a.newFolder(app, name); creating = false; name = "" }, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) { Text("Create") } },
             )
         }
-        Text(
-            "Uninstall", color = Dim, fontSize = 16.sp,
-            modifier = Modifier.padding(top = 16.dp).clickable { a.uninstall(app); onDismiss() }.padding(vertical = 8.dp),
-        )
+        Spacer(Modifier.height(8.dp))
+        ActionRow("Uninstall", color = Danger) { a.uninstall(app); onDismiss() }
     }
 }
 
@@ -141,16 +150,13 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
     val i = s.homeFolders.indexOfFirst { it.name == folder }
     SheetHost(onDismiss) {
         SheetTitle(folder)
-        ToggleRow("Show on home screen", i >= 0) { a.toggleHomeFolder(folder) }
+        ActionRow(if (i >= 0) "Remove from home screen" else "Add to home screen") { a.toggleHomeFolder(folder) }
         Text(
-            if (i >= 0) "Shown on the home screen. Long-press and drag it there to reorder." else "The folder always stays in the app list. Turn this on to also pin it to the home screen.",
+            if (i >= 0) "On the home screen. Long-press and drag it there to reorder." else "The folder always stays in the app list. Add it to the home screen to pin it there too.",
             color = Dim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp),
         )
-        Text("Add apps…", color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp).clickable(onClick = onAddApps).padding(vertical = 8.dp))
-        Text(
-            "Delete folder (apps stay installed)", color = Dim, fontSize = 16.sp,
-            modifier = Modifier.padding(top = 12.dp).clickable { a.deleteFolder(folder); onDismiss() }.padding(vertical = 8.dp),
-        )
+        ActionRow("Add apps…", onClick = onAddApps)
+        ActionRow("Delete folder (apps stay installed)", color = Danger) { a.deleteFolder(folder); onDismiss() }
     }
 }
 
@@ -183,29 +189,3 @@ internal fun monoSwitchColors() = SwitchDefaults.colors(
 internal fun monoCheckboxColors() = CheckboxDefaults.colors(
     checkedColor = Color.White, uncheckedColor = Color(0xFF8A8A8A), checkmarkColor = Color.Black,
 )
-
-/** Names a new folder; the caller opens the app picker for it afterwards. */
-@Composable
-fun NewFolderSheet(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    SheetHost(onDismiss) {
-        SheetTitle("New folder")
-        TextField(
-            value = name, onValueChange = { name = it }, singleLine = true, shape = RoundedCornerShape(50),
-            placeholder = { Text("Folder name") }, modifier = Modifier.fillMaxWidth(),
-            colors = TextFieldDefaults.colors(
-                focusedContainerColor = Chip, unfocusedContainerColor = Chip,
-                focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-            ),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { if (name.isNotBlank()) onCreate(name) }),
-            supportingText = { Text("You pick its apps next.", color = Dim) },
-        )
-        Text(
-            "Create and choose apps", color = if (name.isBlank()) Dim else Color.Black, fontSize = 15.sp,
-            modifier = Modifier.padding(top = 12.dp).clip(RoundedCornerShape(50))
-                .background(if (name.isBlank()) Chip else Color.White)
-                .clickable(enabled = name.isNotBlank()) { onCreate(name) }.padding(horizontal = 18.dp, vertical = 10.dp),
-        )
-    }
-}
