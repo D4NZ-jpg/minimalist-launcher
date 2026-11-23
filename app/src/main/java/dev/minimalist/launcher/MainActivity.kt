@@ -124,7 +124,7 @@ class MainActivity : ComponentActivity() {
         setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherScreen(vm, ::requestDefaultHome) } }
     }
 
-    override fun onResume() { super.onResume(); vm.refresh(); vm.refreshSystem() }
+    override fun onResume() { super.onResume(); vm.reloadApps(); vm.refreshSystem() }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)

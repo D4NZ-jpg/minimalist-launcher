@@ -7,6 +7,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     private val repo = AppRepository(app)
@@ -44,12 +48,21 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         handler.removeCallbacks(reload); handler.postDelayed(reload, 150)
     }
 
-    init { refresh(); refreshSystem(); repo.registerChangeListener(prefsListener) }
+    init { all = repo.loadApps(); refresh(); refreshSystem(); repo.registerChangeListener(prefsListener) }
 
     override fun onCleared() { repo.unregisterChangeListener(prefsListener); handler.removeCallbacks(reload) }
 
+    /** Re-queries the installed apps off the main thread (they may have changed), then redraws. */
+    fun reloadApps() {
+        viewModelScope.launch {
+            val fresh = withContext(Dispatchers.Default) { repo.loadApps() }
+            all = fresh
+            refresh()
+        }
+    }
+
+    /** Rebuilds the screen state from the cached app list and saved layout. Cheap, and runs in the same frame. */
     fun refresh() {
-        all = repo.loadApps()
         hiddenKeys = repo.hidden()
         val byKey = all.associateBy { it.key }
         favourites = repo.favourites().mapNotNull { byKey[it] }
@@ -65,7 +78,10 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun refreshSystem() {
         usageGranted = SystemInfo.hasUsageAccess(app)
-        usageMinutes = if (usageGranted) runCatching { SystemInfo.usageTodayMinutes(app) }.getOrNull() else null
+        if (usageGranted) {
+            // The usage-stats query can take a while, so it must not run on the UI thread.
+            viewModelScope.launch { usageMinutes = withContext(Dispatchers.Default) { runCatching { SystemInfo.usageTodayMinutes(app) }.getOrNull() } }
+        } else usageMinutes = null
         isDefaultHome = SystemInfo.isDefaultHome(app)
         dndGranted = SystemInfo.hasDndAccess(app)
         dnd = dndGranted && SystemInfo.isDndOn(app)
