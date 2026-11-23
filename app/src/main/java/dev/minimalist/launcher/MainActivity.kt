@@ -491,47 +491,69 @@ private fun AppRow(app: AppEntry, size: androidx.compose.ui.unit.TextUnit, start
 
 @Composable
 private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
+    var page by remember { mutableStateOf<SettingsPage?>(null) }
     var picking by remember { mutableStateOf(false) }
+    BackHandler(enabled = page != null && !picking) { page = null }
     BackHandler(enabled = picking) { picking = false }
     if (picking) { AppPickerScreen("Hide apps", s.allApps, { it.key in s.hiddenKeys }, a.toggleHidden) { picking = false }; return }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton({ a.showSettings(false) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
-            Text("Settings", color = Color.White, fontSize = 22.sp)
+            IconButton({ if (page == null) a.showSettings(false) else page = null }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
+            Text(page?.label ?: "Settings", color = Color.White, fontSize = 22.sp)
         }
         LazyColumn {
-            item {
-                SectionLabel("Display")
-                SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }, colors = monoSwitchColors()) }
-                CycleRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
-                SettingRow("Show app count on folders", null, onClick = { a.setShowFolderCounts(!s.showFolderCounts) }) { Switch(s.showFolderCounts, { a.setShowFolderCounts(it) }, colors = monoSwitchColors()) }
-                SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }, colors = monoSwitchColors()) }
-                SectionLabel("Gestures")
-                CycleRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
-                Gesture.entries.filter { it != s.swipe.gesture() }.forEach { g ->
-                    val b = s.gestures[g] ?: GestureBinding(GestureAction.None)
-                    val choose = LocalChooseGesture.current
-                    val label = if (b.action == GestureAction.LaunchApp) (s.allApps.firstOrNull { it.key == b.appKey }?.label ?: "Choose an app") else b.action.label
-                    SettingRow(g.label, null, onClick = { choose(g) }) {
-                        Text(label, color = Dim, fontSize = 15.sp, modifier = Modifier.padding(end = 4.dp))
-                        Text("›", color = Dim, fontSize = 22.sp)
+            when (page) {
+                null -> item {
+                    SettingsPage.entries.forEach { p ->
+                        SettingRow(p.label, p.summary, onClick = { page = p }) { Text("›", color = Dim, fontSize = 22.sp) }
+                    }
+                    SettingRow("Home app", if (s.isDefaultHome) "This launcher opens when you press Home" else "Not your home app. Tap to set it", onClick = a.openDefaultLauncher) {
+                        Text(if (s.isDefaultHome) "Yes" else "No", color = if (s.isDefaultHome) Color.White else Dim, fontSize = 15.sp)
                     }
                 }
-                SettingRow("Show swipe hint", "A faint arrow showing where to swipe", onClick = { a.setShowSwipeHint(!s.showSwipeHint) }) { Switch(s.showSwipeHint, { a.setShowSwipeHint(it) }, colors = monoSwitchColors()) }
-                SectionLabel("Permissions")
-                SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
-                SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }
-                SettingRow("Accessibility service", "Needed to lock the screen, and as a backup for notifications", onClick = a.openAccessibility) { StatusText(s.accessibilityOn) }
-                SettingRow("Home app", if (s.isDefaultHome) "This launcher opens when you press Home" else "Not your home app. Tap to set it", onClick = a.openDefaultLauncher) {
-                    Text(if (s.isDefaultHome) "Yes" else "No", color = if (s.isDefaultHome) Color.White else Dim, fontSize = 15.sp)
+                SettingsPage.Display -> item {
+                    SettingRow("24-hour clock", null, onClick = { a.set24h(!s.use24h) }) { Switch(s.use24h, { a.set24h(it) }, colors = monoSwitchColors()) }
+                    CycleRow("Text size", TextSize.entries, s.textSize, { it.label }, a.setTextSize)
                 }
-                SectionLabel("Hidden apps")
-                SettingRow("Hide more apps…", "Choose apps to remove from the app list", onClick = { picking = true })
-                if (s.hiddenApps.isEmpty()) Text("None hidden", color = Color.Gray, modifier = Modifier.padding(8.dp))
+                SettingsPage.Apps -> {
+                    item {
+                        SettingRow("Show app count on folders", null, onClick = { a.setShowFolderCounts(!s.showFolderCounts) }) { Switch(s.showFolderCounts, { a.setShowFolderCounts(it) }, colors = monoSwitchColors()) }
+                        SettingRow("Apps in folders stay in the list", "Off: an app in a folder is only listed in its folder (search still finds it)", onClick = { a.setShowFolderedApps(!s.showFolderedApps) }) { Switch(s.showFolderedApps, { a.setShowFolderedApps(it) }, colors = monoSwitchColors()) }
+                        SectionLabel("Hidden apps")
+                        SettingRow("Hide more apps…", "Choose apps to remove from the app list", onClick = { picking = true })
+                        if (s.hiddenApps.isEmpty()) Text("None hidden", color = Color.Gray, modifier = Modifier.padding(8.dp))
+                    }
+                    items(s.hiddenApps, key = { it.key }) { app -> SettingRow(app.label, "Hidden from the app list", onClick = { a.toggleHidden(app) }) { Text("Unhide", color = Color.White, fontSize = 15.sp) } }
+                }
+                SettingsPage.Gestures -> item {
+                    CycleRow("Swipe to open all apps", SwipeDir.entries, s.swipe, { it.label }, a.setSwipe)
+                    Gesture.entries.filter { it != s.swipe.gesture() }.forEach { g ->
+                        val b = s.gestures[g] ?: GestureBinding(GestureAction.None)
+                        val choose = LocalChooseGesture.current
+                        val label = if (b.action == GestureAction.LaunchApp) (s.allApps.firstOrNull { it.key == b.appKey }?.label ?: "Choose an app") else b.action.label
+                        SettingRow(g.label, null, onClick = { choose(g) }) {
+                            Text(label, color = Dim, fontSize = 15.sp, modifier = Modifier.padding(end = 4.dp))
+                            Text("›", color = Dim, fontSize = 22.sp)
+                        }
+                    }
+                    SettingRow("Show swipe hint", "A faint arrow showing where to swipe", onClick = { a.setShowSwipeHint(!s.showSwipeHint) }) { Switch(s.showSwipeHint, { a.setShowSwipeHint(it) }, colors = monoSwitchColors()) }
+                }
+                SettingsPage.Permissions -> item {
+                    SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
+                    SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }
+                    SettingRow("Accessibility service", "Needed to lock the screen, and as a backup for notifications", onClick = a.openAccessibility) { StatusText(s.accessibilityOn) }
+                }
             }
-            items(s.hiddenApps, key = { it.key }) { app -> SettingRow(app.label, "Hidden from the app list", onClick = { a.toggleHidden(app) }) { Text("Unhide", color = Color.White, fontSize = 15.sp) } }
         }
     }
+}
+
+/** The sections of the settings screen. Each opens its own page. */
+private enum class SettingsPage(val label: String, val summary: String) {
+    Display("Display", "Clock and text size"),
+    Apps("Apps and folders", "Folders and hidden apps"),
+    Gestures("Gestures", "Swipes, double tap and long press"),
+    Permissions("Permissions", "Usage, Do Not Disturb and Accessibility"),
 }
 
 /** Full-screen list of every app with a checkbox each, and a filter. Used for hiding apps and filling folders. */

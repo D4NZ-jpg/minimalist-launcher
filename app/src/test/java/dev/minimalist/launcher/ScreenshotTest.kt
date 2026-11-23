@@ -61,7 +61,7 @@ class ScreenshotTest {
 
     private fun shot(name: String, s: LauncherState, pick: Boolean = false) {
         rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(s, LauncherActions()) } }
-        if (pick) { rule.onNodeWithText("Hide more apps…").performClick(); rule.waitForIdle() }
+        if (pick) { rule.onNodeWithText("Apps and folders").performClick(); rule.onNodeWithText("Hide more apps…").performClick(); rule.waitForIdle() }
         rule.onRoot().captureRoboImage("build/screenshots/$name.png")
     }
 
@@ -185,6 +185,7 @@ class ScreenshotTest {
         var set: Pair<Gesture, GestureBinding>? = null
         rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showSettings = true, gestures = Gesture.entries.associateWith { GestureBinding(GestureAction.None) }), LauncherActions(setGesture = { g, b -> set = g to b })) } }
         rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Gestures").performClick()
         rule.onNodeWithText("Double tap").performClick()
         rule.mainClock.advanceTimeBy(600)
         rule.onNodeWithText("Toggle flashlight").performClick()
@@ -195,6 +196,7 @@ class ScreenshotTest {
         var set: Pair<Gesture, GestureBinding>? = null
         rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showSettings = true, allApps = all, gestures = Gesture.entries.associateWith { GestureBinding(GestureAction.None) }), LauncherActions(setGesture = { g, b -> set = g to b })) } }
         rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Gestures").performClick()
         rule.onNodeWithText("Swipe left").performClick()
         rule.mainClock.advanceTimeBy(600)
         rule.onNodeWithText("Open an app").performClick()
@@ -205,8 +207,8 @@ class ScreenshotTest {
 
     @Test fun gestureSettingsScreenshot() = foldShot("gestures_settings", base.copy(showSettings = true, accessibilityOn = false,
         gestures = Gesture.entries.associateWith { when (it) { Gesture.SwipeDown -> GestureBinding(GestureAction.Notifications); Gesture.LongPress -> GestureBinding(GestureAction.LauncherSettings); Gesture.DoubleTap -> GestureBinding(GestureAction.LockScreen); Gesture.SwipeLeft -> GestureBinding(GestureAction.LaunchApp, app("Camera").key); else -> GestureBinding(GestureAction.None) } },
-        allApps = all))
-    @Test fun gestureChooserScreenshot() = foldShot("gestures_chooser", base.copy(showSettings = true, gestures = Gesture.entries.associateWith { GestureBinding(GestureAction.None) })) { rule.onNodeWithText("Double tap").performClick() }
+        allApps = all)) { rule.onNodeWithText("Gestures").performClick() }
+    @Test fun gestureChooserScreenshot() = foldShot("gestures_chooser", base.copy(showSettings = true, gestures = Gesture.entries.associateWith { GestureBinding(GestureAction.None) })) { rule.onNodeWithText("Gestures").performClick(); rule.onNodeWithText("Double tap").performClick() }
 
     @Test fun layersFollowTheFingerAndBothMove() {
         val called = followSetup(SwipeDir.Left)
@@ -359,6 +361,19 @@ class ScreenshotTest {
     @Test fun sideStripHasFolderShortcut() = foldShot("fold_strip", inDrawer)
     @Test fun foldPicker() = foldShot("fold_picker", inDrawer.copy(allApps = all)) { longPress("Money"); rule.onNodeWithText("Add apps…").performClick() }
     @Test fun foldEmptyFolder() = foldShot("fold_empty", inDrawer.copy(folders = base.folders + FolderUi("Games", emptyList()))) { rule.onNodeWithText("Games").performClick() }
+
+    @Test fun settingsSubmenus() {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showSettings = true), LauncherActions()) } }
+        rule.mainClock.advanceTimeBy(600)
+        for (label in listOf("Display", "Apps and folders", "Gestures", "Permissions", "Home app")) assertTrue(label, rule.onAllNodesWithText(label).fetchSemanticsNodes().isNotEmpty())
+        // The detail rows live inside their page, not on the main list.
+        assertTrue(rule.onAllNodesWithText("24-hour clock").fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Display").performClick(); rule.mainClock.advanceTimeBy(300)
+        assertTrue(rule.onAllNodesWithText("24-hour clock").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("Apps and folders").fetchSemanticsNodes().isEmpty())
+    }
+    @Test fun settingsDisplayPageScreenshot() = foldShot("settings_display", base.copy(showSettings = true)) { rule.onNodeWithText("Display").performClick() }
+    @Test fun settingsAppsPageScreenshot() = foldShot("settings_apps", base.copy(showSettings = true, hiddenApps = listOf(app("Timer")))) { rule.onNodeWithText("Apps and folders").performClick() }
 
     @Test fun sheetApp() = shotLongPress("sheet_app", base, "Calendar")
     @Test fun sheetFolder() = shotLongPress("sheet_folder", base.copy(showDrawer = true), "Money")
