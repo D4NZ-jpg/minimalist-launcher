@@ -8,6 +8,8 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.swipe
+import androidx.compose.ui.test.doubleClick
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -126,6 +128,58 @@ class ScreenshotTest {
         return { if (it == null) lastCall ?: error("showDrawer was never called") else lastCall == it }
     }
     private fun filesXs() = rule.onAllNodesWithText("Files").fetchSemanticsNodes().map { it.positionInRoot.x }
+
+    // ---- home screen gestures ----
+    private fun gestureSetup(swipe: SwipeDir = SwipeDir.Up): MutableList<Gesture> {
+        val ran = mutableListOf<Gesture>()
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(swipe = swipe), LauncherActions(runGesture = { ran += it })) } }
+        return ran
+    }
+
+    @Test fun swipeDownRunsTheSwipeDownGesture() {
+        val ran = gestureSetup()
+        rule.onRoot().performTouchInput { swipe(Offset(width * 0.5f, height * 0.3f), Offset(width * 0.5f, height * 0.6f), 200) }
+        assertEquals(listOf(Gesture.SwipeDown), ran)
+    }
+
+    @Test fun swipeLeftAndRightAreGesturesWhenTheListOpensUpwards() {
+        val ran = gestureSetup(SwipeDir.Up)
+        rule.onRoot().performTouchInput { swipe(Offset(width * 0.8f, height * 0.4f), Offset(width * 0.3f, height * 0.4f), 200) }
+        rule.onRoot().performTouchInput { swipe(Offset(width * 0.2f, height * 0.4f), Offset(width * 0.7f, height * 0.4f), 200) }
+        assertEquals(listOf(Gesture.SwipeLeft, Gesture.SwipeRight), ran)
+    }
+
+    @Test fun theSwipeThatOpensTheListIsNotAGesture() {
+        val ran = gestureSetup(SwipeDir.Left)
+        rule.onRoot().performTouchInput { swipe(Offset(width * 0.8f, height * 0.4f), Offset(width * 0.3f, height * 0.4f), 200) }
+        assertEquals(emptyList<Gesture>(), ran)
+    }
+
+    @Test fun swipeDownStillWorksWhenTheListOpensSideways() {
+        val ran = gestureSetup(SwipeDir.Left)
+        rule.onRoot().performTouchInput { swipe(Offset(width * 0.5f, height * 0.3f), Offset(width * 0.5f, height * 0.6f), 200) }
+        assertEquals(listOf(Gesture.SwipeDown), ran)
+    }
+
+    @Test fun aTinyDragIsNotAGesture() {
+        val ran = gestureSetup()
+        rule.onRoot().performTouchInput { swipe(Offset(width * 0.5f, height * 0.4f), Offset(width * 0.5f, height * 0.4f + 20f), 200) }
+        assertEquals(emptyList<Gesture>(), ran)
+    }
+
+    @Test fun doubleTapAndLongPressOnEmptySpaceAreGestures() {
+        val ran = gestureSetup()
+        rule.onRoot().performTouchInput { doubleClick(Offset(width * 0.5f, height * 0.62f)) }
+        rule.onRoot().performTouchInput { longClick(Offset(width * 0.5f, height * 0.62f)) }
+        assertEquals(listOf(Gesture.DoubleTap, Gesture.LongPress), ran)
+    }
+
+    @Test fun longPressOnARowOpensTheSheetNotTheEmptySpaceGesture() {
+        val ran = gestureSetup()
+        longPress("Calendar")
+        assertTrue(ran.isEmpty())
+        assertTrue(rule.onAllNodesWithText("Remove from home").fetchSemanticsNodes().isNotEmpty())
+    }
 
     @Test fun layersFollowTheFingerAndBothMove() {
         val called = followSetup(SwipeDir.Left)

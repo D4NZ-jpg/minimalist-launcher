@@ -232,22 +232,36 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
                 val vertical = s.swipe == SwipeDir.Up
                 val sign = if (s.swipe == SwipeDir.Right) 1f else -1f   // finger direction that opens the list
                 val tracker = VelocityTracker()
-                var locked = false; var along = 0f; var across = 0f
+                var locked = false; var along = 0f; var across = 0f; var dx = 0f; var dy = 0f
+                val minDistance = 72.dp.toPx()
                 fun end() {
-                    if (!locked) return
                     val v = tracker.calculateVelocity()
-                    settle((if (vertical) v.y else v.x) * sign)
-                    locked = false
+                    if (locked) {
+                        settle((if (vertical) v.y else v.x) * sign)
+                        locked = false
+                        return
+                    }
+                    // Not dragging the app list: treat a clear swipe in any other direction as a gesture.
+                    if (s.showDrawer) return
+                    val dist = kotlin.math.hypot(dx, dy)
+                    val flick = kotlin.math.hypot(v.x, v.y) > 1200f && dist >= viewConfiguration.touchSlop * 2
+                    if (dist < minDistance && !flick) return
+                    val g = when {
+                        kotlin.math.abs(dx) > kotlin.math.abs(dy) * 1.4f -> if (dx < 0) Gesture.SwipeLeft else Gesture.SwipeRight
+                        kotlin.math.abs(dy) > kotlin.math.abs(dx) * 1.4f -> if (dy < 0) Gesture.SwipeUp else Gesture.SwipeDown
+                        else -> null
+                    }
+                    if (g != null && g != s.swipe.gesture()) a.runGesture(g)
                 }
                 detectDragGestures(
-                    onDragStart = { locked = false; along = 0f; across = 0f; tracker.resetTracking() },
+                    onDragStart = { locked = false; along = 0f; across = 0f; dx = 0f; dy = 0f; tracker.resetTracking() },
                     onDragEnd = { end() },
                     onDragCancel = { end() },
                 ) { change, drag ->
                     val a1 = if (vertical) drag.y else drag.x
                     val c1 = if (vertical) drag.x else drag.y
                     tracker.addPosition(change.uptimeMillis, change.position)
-                    along += a1; across += c1
+                    along += a1; across += c1; dx += drag.x; dy += drag.y
                     if (!locked) {
                         val opening = !s.showDrawer && along * sign > 0
                         // For sideways swipes the opposite sideways drag pulls the list closed again.
@@ -275,7 +289,11 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
                         }
                     }
                     .background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
-            ) { Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it }) }
+            ) {
+                // Behind the home content, so only empty space reaches it; rows and the dock keep their own taps.
+                Box(Modifier.fillMaxSize().emptySpaceGestures(a))
+                Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
+            }
 
             if (listVisible) Box(
                 Modifier.fillMaxSize()
@@ -313,6 +331,14 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     }
 }
 
+/**
+ * Double tap and long press on empty space. A row or icon that handles its own tap consumes the press first,
+ * so these only fire where nothing else is.
+ */
+private fun Modifier.emptySpaceGestures(a: LauncherActions): Modifier = pointerInput(a) {
+    detectTapGestures(onDoubleTap = { a.runGesture(Gesture.DoubleTap) }, onLongPress = { a.runGesture(Gesture.LongPress) })
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateList<String>, onAppMenu: (AppEntry) -> Unit, onFolderMenu: (String) -> Unit) {
@@ -325,7 +351,8 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
         }
         // Scrolls when favourites + folders overflow. Disabled for swipe-up, where a vertical
         // scroller would swallow the gesture that opens the app list.
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState(), enabled = s.swipe != SwipeDir.Up).padding(top = 32.dp)) {
+        val scroll = rememberScrollState()
+        Column(Modifier.weight(1f).emptySpaceGestures(a).verticalScroll(scroll, enabled = s.swipe != SwipeDir.Up && scroll.maxValue > 0).padding(top = 32.dp)) {
             ReorderColumn(s.favourites, { it.key }, { app, d -> a.moveFavourite(app, d) }, onAppMenu) { app, drag ->
                 Text(
                     app.label, color = Color.White, fontSize = sz(20),
