@@ -1,11 +1,16 @@
 package dev.minimalist.launcher
 
+import androidx.compose.runtime.Immutable
+
 /** Apps shown in the main list: not hidden, and (unless the user opted in) not inside any folder. */
 fun visibleApps(all: List<AppEntry>, hidden: Set<String>, foldered: Set<String>, showFoldered: Boolean) =
     all.filter { it.key !in hidden && (showFoldered || it.key !in foldered) }
 
+@Immutable
 data class FolderUi(val name: String, val apps: List<AppEntry>)
 
+/** Never mutated after creation (the lists are replaced, not edited), so Compose can skip unchanged UI. */
+@Immutable
 data class LauncherState(
     val time: String = "", val date: String = "", val battery: Int = 100, val charging: Boolean = false,
     val usage: String = "", val usageGranted: Boolean = true,
@@ -17,6 +22,7 @@ data class LauncherState(
     val showFolderCounts: Boolean = false, val isDefaultHome: Boolean = true, val showHomePrompt: Boolean = false,
 )
 
+@Immutable
 class LauncherActions(
     val showDrawer: (Boolean) -> Unit = {}, val showSettings: (Boolean) -> Unit = {}, val query: (String) -> Unit = {},
     val launch: (AppEntry) -> Unit = {}, val toggleFavourite: (AppEntry) -> Unit = {}, val toggleDock: (AppEntry) -> Unit = {},

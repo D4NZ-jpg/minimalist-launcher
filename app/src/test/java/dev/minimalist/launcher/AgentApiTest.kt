@@ -36,6 +36,14 @@ class AgentApiTest {
         assertEquals(listOf("Fun"), repo.homeFolders())
     }
 
+    @Test fun appCacheRoundTripsEvenWithOddLabels() {
+        val apps = listOf(AppEntry("Plain", "p.a", "p.a.Main"), AppEntry("Tab\there\nnewline", "p.b", "p.b.Main"), AppEntry("Ünïcode ✓", "p.c", "p.c.Main"))
+        repo.saveAppCache(apps)
+        val back = repo.cachedApps()
+        assertEquals(listOf("p.a/p.a.Main", "p.b/p.b.Main", "p.c/p.c.Main"), back.map { it.key })
+        assertEquals(listOf("Plain", "Tab here newline", "Ünïcode ✓"), back.map { it.label })
+    }
+
     @Test fun absentSectionsAreLeftAlone() {
         AgentApi.apply(repo, JSONObject("""{"favourites":["a/A"]}"""), known)
         AgentApi.apply(repo, JSONObject("""{"hidden":["b/B"]}"""), known)

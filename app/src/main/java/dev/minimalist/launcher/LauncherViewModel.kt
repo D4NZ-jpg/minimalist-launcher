@@ -48,7 +48,8 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
         handler.removeCallbacks(reload); handler.postDelayed(reload, 150)
     }
 
-    init { all = repo.loadApps(); refresh(); refreshSystem(); repo.registerChangeListener(prefsListener) }
+    // Start from the saved app list so the home screen appears at once; onResume then refreshes it in the background.
+    init { all = repo.cachedApps().ifEmpty { repo.loadApps() }; refresh(); refreshSystem(); repo.registerChangeListener(prefsListener) }
 
     override fun onCleared() { repo.unregisterChangeListener(prefsListener); handler.removeCallbacks(reload) }
 
@@ -96,7 +97,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
             .sortedWith(compareBy({ !it.label.lowercase().startsWith(q) }, { it.label.lowercase() }))
     }
 
-    fun launch(a: AppEntry) { repo.launch(a); query = ""; showDrawer = false; updateResults() }
+    fun launch(a: AppEntry) { if (!repo.launch(a)) reloadApps(); query = ""; showDrawer = false; updateResults() }
     fun toggleFavourite(a: AppEntry) { repo.setFavourite(a.key, a.key !in favourites.map { it.key }); refresh() }
     fun toggleDock(a: AppEntry) { repo.setDock(a.key, a.key !in dock.map { it.key }); refresh() }
     fun toggleHidden(a: AppEntry) { repo.setHidden(a.key, a.key !in hiddenKeys); refresh() }

@@ -18,6 +18,7 @@ enum class TextSize(val label: String, val scale: Float) { Small("Small", 0.85f)
 
 enum class SwipeDir(val label: String) { Up("Up"), Left("Right to left"), Right("Left to right") }
 
+@androidx.compose.runtime.Immutable
 data class AppEntry(val label: String, val packageName: String, val className: String) {
     val key get() = "$packageName/$className"
     val component get() = ComponentName(packageName, className)
@@ -28,12 +29,24 @@ data class AppEntry(val label: String, val packageName: String, val className: S
 class AppRepository(private val context: Context) {
     private val prefs = context.getSharedPreferences("launcher", Context.MODE_PRIVATE)
 
+    /** Queries every launchable app (slow: it loads each label) and remembers the result for the next cold start. */
     fun loadApps(): List<AppEntry> {
         val intent = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
-        return context.packageManager.queryIntentActivities(intent, 0)
-            .map { AppEntry(it.loadLabel(context.packageManager).toString(), it.activityInfo.packageName, it.activityInfo.name) }
+        val pm = context.packageManager
+        val apps = pm.queryIntentActivities(intent, 0)
+            .map { AppEntry(it.loadLabel(pm).toString(), it.activityInfo.packageName, it.activityInfo.name) }
             .filter { it.packageName != context.packageName }
             .sortedBy { it.label.lowercase() }
+        saveAppCache(apps)
+        return apps
+    }
+
+    /** The last result of [loadApps], read instantly so the home screen can draw before the slow query finishes. */
+    fun cachedApps(): List<AppEntry> = prefs.getString("appCache", "")!!.lineSequence()
+        .map { it.split('\t', limit = 3) }.filter { it.size == 3 }.map { AppEntry(it[2], it[0], it[1]) }.toList()
+
+    fun saveAppCache(apps: List<AppEntry>) {
+        prefs.edit().putString("appCache", apps.joinToString("\n") { "${it.packageName}\t${it.className}\t${it.label.replace('\t', ' ').replace('\n', ' ')}" }).apply()
     }
 
     fun favourites(): List<String> = prefs.getString("favs", "")!!.split("\n").filter { it.isNotEmpty() }
@@ -172,12 +185,14 @@ class AppRepository(private val context: Context) {
         prefs.edit().putString("folderMap", m.entries.flatMap { (n, ks) -> ks.map { "$n\t$it" } }.joinToString("\n")).apply()
     }
 
-    fun launch(app: AppEntry) {
+    /** Returns false when the app no longer exists (the cached list can be briefly out of date). */
+    fun launch(app: AppEntry): Boolean = try {
         context.startActivity(
             Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
                 .setComponent(app.component).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED)
         )
-    }
+        true
+    } catch (_: android.content.ActivityNotFoundException) { false }
 
     fun uninstall(app: AppEntry) {
         context.startActivity(Intent(Intent.ACTION_DELETE, Uri.parse("package:${app.packageName}")).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))

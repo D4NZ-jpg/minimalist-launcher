@@ -170,14 +170,15 @@ fun LauncherScreen(vm: LauncherViewModel, onRequestHome: () -> Unit) {
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
         dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, isDefaultHome = vm.isDefaultHome, showFolderCounts = vm.showFolderCounts, showHomePrompt = !vm.isDefaultHome && !vm.askedHomePrompt, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
     )
-    val actions = LauncherActions(
+    // Built once, so unchanged screens are skipped instead of redrawn whenever the clock ticks.
+    val actions = remember(vm, onRequestHome) { LauncherActions(
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
         deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
         openDndAccess = vm::openDndAccess, openDefaultLauncher = onRequestHome, dismissHomePrompt = vm::dismissHomePrompt, setShowFolderCounts = vm::chooseShowFolderCounts, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
         moveHomeFolder = vm::moveHomeFolder, setShowFolderedApps = vm::chooseShowFoldered, setShowSwipeHint = vm::chooseShowHint,
-    )
+    ) }
     LauncherContent(state, actions)
 }
 
@@ -413,11 +414,11 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
                 if (!searching) s.folders.forEach { f ->
                     item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim, info = if (s.showFolderCounts) "${f.apps.size}" else null) }
                     if (f.name in expanded) {
-                        items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
+                        items(f.apps, key = { "fa:${f.name}:${it.key}" }, contentType = { "app" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { EmptyFolderHint(f.name) }
                     }
                 }
-                items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
+                items(s.results, key = { it.key }, contentType = { "app" }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
             }
             if (!searching) AlphabetBar(
                 (if (s.folders.isNotEmpty()) listOf(FOLDERS) else emptyList()) + letters,
