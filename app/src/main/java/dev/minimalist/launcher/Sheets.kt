@@ -91,7 +91,7 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
         SheetTitle(app.label)
         ToggleRow("Show on home", favIndex >= 0) { a.toggleFavourite(app) }
         ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
-        ToggleRow("Hide from app list", app.key in s.hiddenKeys) { a.toggleHidden(app) }
+        ToggleRow("Hide from main app list", app.key in s.hiddenKeys) { a.toggleHidden(app) }
         SheetLabel("Add to folders")
         s.folders.forEach { f ->
             val member = f.apps.any { it.key == app.key }
@@ -127,7 +127,7 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
 }
 
 @Composable
-fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss: () -> Unit) {
+fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss: () -> Unit, onAddApps: () -> Unit) {
     val i = s.homeFolders.indexOfFirst { it.name == folder }
     SheetHost(onDismiss) {
         SheetTitle(folder)
@@ -136,6 +136,7 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
             if (i >= 0) "Shown on the home screen. Long-press and drag it there to reorder." else "The folder always stays in the app list. Turn this on to also pin it to the home screen.",
             color = Dim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp),
         )
+        Text("Add apps…", color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp).clickable(onClick = onAddApps).padding(vertical = 8.dp))
         Text(
             "Delete folder", color = Dim, fontSize = 16.sp,
             modifier = Modifier.padding(top = 12.dp).clickable { a.deleteFolder(folder); onDismiss() }.padding(vertical = 8.dp),

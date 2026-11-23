@@ -90,6 +90,7 @@ private enum class Screen { Home, Drawer, Settings }
 
 internal val Bg = Color(0xFF0B0B0B)
 private val LocalTextScale = compositionLocalOf { 1f }
+private val LocalAddApps = staticCompositionLocalOf<(String) -> Unit> { {} }
 @Composable private fun sz(v: Int) = (v * LocalTextScale.current).sp
 
 internal val Dim = Color.White.copy(alpha = 0.7f)
@@ -165,6 +166,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
 fun LauncherContent(s: LauncherState, a: LauncherActions) {
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
     var folderMenu by remember { mutableStateOf<String?>(null) }
+    var pickFolder by remember { mutableStateOf<String?>(null) }
     val expanded = remember { mutableStateListOf<String>() }
 
     BackHandler(enabled = s.showSettings) { a.showSettings(false) }
@@ -209,7 +211,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             SwipeDir.Left -> AnimatedContentTransitionScope.SlideDirection.Right
             SwipeDir.Right -> AnimatedContentTransitionScope.SlideDirection.Left
         }
-        CompositionLocalProvider(LocalTextScale provides s.textSize.scale) {
+        CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }) {
             AnimatedContent(
                 targetState = screen, label = "screen",
                 transitionSpec = {
@@ -242,7 +244,13 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
         }
     }
     menuFor?.let { app -> AppSheet(app, s, a) { menuFor = null } }
-    folderMenu?.let { name -> FolderSheet(name, s, a) { folderMenu = null } }
+    folderMenu?.let { name -> FolderSheet(name, s, a, onDismiss = { folderMenu = null }, onAddApps = { pickFolder = name; folderMenu = null }) }
+    pickFolder?.let { name ->
+        BackHandler { pickFolder = null }
+        Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
+            AppPickerScreen("Add apps to $name", s.allApps, { app -> s.folders.firstOrNull { it.name == name }?.apps?.any { it.key == app.key } == true }, { a.toggleFolder(it, name) }) { pickFolder = null }
+        }
+    }
     }
 }
 
@@ -311,7 +319,7 @@ private fun FolderBlock(
                 modifier = Modifier.fillMaxWidth().combinedClickable(onClick = { onLaunch(app) }, onLongClick = { onAppMenu(app) }).padding(start = 48.dp, top = 8.dp, bottom = 8.dp)
             )
         }
-        if (f.apps.isEmpty()) Text("No apps yet. Long-press an app and tick this folder.", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp))
+        if (f.apps.isEmpty()) EmptyFolderHint(f.name)
     }
 }
 
@@ -349,7 +357,7 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
                     item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim, info = "${f.apps.size}" + if (s.homeFolders.any { it.name == f.name }) " · on home" else "", onMore = { onFolderMenu(f.name) }) }
                     if (f.name in expanded) {
                         items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
-                        if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("No apps yet. Long-press an app and tick this folder.", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
+                        if (f.apps.isEmpty()) item(key = "fe:${f.name}") { EmptyFolderHint(f.name) }
                     }
                 }
                 items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
@@ -375,7 +383,7 @@ private fun AppRow(app: AppEntry, size: androidx.compose.ui.unit.TextUnit, start
 private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
     var picking by remember { mutableStateOf(false) }
     BackHandler(enabled = picking) { picking = false }
-    if (picking) { HidePicker(s, a) { picking = false }; return }
+    if (picking) { AppPickerScreen("Hide apps", s.allApps, { it.key in s.hiddenKeys }, a.toggleHidden) { picking = false }; return }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton({ a.showSettings(false) }) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
@@ -403,15 +411,15 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
     }
 }
 
-/** Full list of apps with a checkbox each; ticked apps are hidden from the drawer. */
+/** Full-screen list of every app with a checkbox each, and a filter. Used for hiding apps and filling folders. */
 @Composable
-private fun HidePicker(s: LauncherState, a: LauncherActions, onBack: () -> Unit) {
+internal fun AppPickerScreen(title: String, apps: List<AppEntry>, isChecked: (AppEntry) -> Boolean, onToggle: (AppEntry) -> Unit, onBack: () -> Unit) {
     var filter by remember { mutableStateOf("") }
-    val shown = remember(s.allApps, filter) { s.allApps.filter { it.label.contains(filter.trim(), ignoreCase = true) } }
+    val shown = remember(apps, filter) { apps.filter { it.label.contains(filter.trim(), ignoreCase = true) } }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
-            Text("Hide apps", color = Color.White, fontSize = 22.sp)
+            Text(title, color = Color.White, fontSize = 22.sp)
         }
         TextField(
             value = filter, onValueChange = { filter = it }, singleLine = true, shape = RoundedCornerShape(50),
@@ -424,13 +432,20 @@ private fun HidePicker(s: LauncherState, a: LauncherActions, onBack: () -> Unit)
         )
         LazyColumn {
             items(shown, key = { it.key }) { app ->
-                Row(Modifier.fillMaxWidth().clickable { a.toggleHidden(app) }.padding(horizontal = 8.dp, vertical = 0.dp), verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clickable { onToggle(app) }.padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(app.label, color = Color.White, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                    Checkbox(app.key in s.hiddenKeys, { a.toggleHidden(app) })
+                    Checkbox(isChecked(app), { onToggle(app) }, colors = monoCheckboxColors())
                 }
             }
         }
     }
+}
+
+@Composable
+private fun EmptyFolderHint(folder: String) {
+    val addApps = LocalAddApps.current
+    Text("No apps yet. Add apps", color = Color.White.copy(alpha = 0.75f), fontSize = 14.sp,
+        modifier = Modifier.padding(start = 48.dp).clickable { addApps(folder) }.padding(vertical = 8.dp))
 }
 
 @Composable
