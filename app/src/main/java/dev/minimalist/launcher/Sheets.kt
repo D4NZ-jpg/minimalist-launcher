@@ -97,12 +97,10 @@ private fun ToggleRow(label: String, on: Boolean, subtitle: String? = null, enab
 }
 
 @Composable
-fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () -> Unit) {
+fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onRename: () -> Unit, onDismiss: () -> Unit) {
     val favIndex = s.favourites.indexOfFirst { it.key == app.key }
     var creating by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
-    var renaming by remember { mutableStateOf(false) }
-    var newName by remember { mutableStateOf(app.label) }
     val inFolder = s.folders.any { f -> f.apps.any { it.key == app.key } }
     // While an app sits in a folder it is already out of the main list, so hiding adds nothing (unless it is already hidden).
     val redundantHide = inFolder && !s.showFolderedApps && app.key !in s.hiddenKeys
@@ -115,23 +113,7 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
             subtitle = if (redundantHide) "Shown inside its folders only" else null,
             enabled = !redundantHide,
         ) { a.toggleHidden(app) }
-        if (!renaming) ActionRow("Rename") { renaming = true }
-        else {
-            val save = { a.renameApp(app, newName); onDismiss() }
-            TextField(
-                value = newName, onValueChange = { newName = it }, singleLine = true, shape = RoundedCornerShape(50),
-                placeholder = { Text("Name") }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Chip, unfocusedContainerColor = Chip,
-                    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                ),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                keyboardActions = KeyboardActions(onDone = { save() }),
-                supportingText = { Text("Original name: ${app.original}", color = Dim) },
-                trailingIcon = { TextButton({ save() }, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) { Text("Save") } },
-            )
-            if (app.label != app.original) ActionRow("Use the original name") { a.renameApp(app, null); onDismiss() }
-        }
+        ActionRow("Rename app", onClick = onRename)
         SheetLabel("Add to folders")
         s.folders.forEach { f ->
             val member = f.apps.any { it.key == app.key }
@@ -176,6 +158,33 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
         )
         ActionRow("Add apps…", onClick = onAddApps)
         ActionRow("Delete folder (apps stay installed)", color = Danger) { a.deleteFolder(folder); onDismiss() }
+    }
+}
+
+/** Small sheet for giving an app your own name. Only appears when you ask to rename. */
+@Composable
+fun RenameSheet(app: AppEntry, onSave: (String?) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf(app.label) }
+    SheetHost(onDismiss) {
+        SheetTitle("Rename app")
+        TextField(
+            value = name, onValueChange = { name = it }, singleLine = true, shape = RoundedCornerShape(50),
+            placeholder = { Text("Name") }, modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Chip, unfocusedContainerColor = Chip,
+                focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { onSave(name) }),
+            supportingText = { Text("Original name: ${app.original}", color = Dim) },
+        )
+        Text(
+            "Save", color = if (name.isBlank()) Dim else Color.Black, fontSize = 15.sp,
+            modifier = Modifier.padding(top = 12.dp).clip(RoundedCornerShape(50))
+                .background(if (name.isBlank()) Chip else Color.White)
+                .clickable(enabled = name.isNotBlank()) { onSave(name) }.padding(horizontal = 18.dp, vertical = 10.dp),
+        )
+        if (app.label != app.original) ActionRow("Use the original name") { onSave(null) }
     }
 }
 

@@ -192,6 +192,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     var folderMenu by remember { mutableStateOf<String?>(null) }
     var pickFolder by remember { mutableStateOf<String?>(null) }
     var chooseFor by remember { mutableStateOf<Gesture?>(null) }
+    var renameFor by remember { mutableStateOf<AppEntry?>(null) }
     var pickAppFor by remember { mutableStateOf<Gesture?>(null) }
     val expanded = remember { mutableStateListOf<String>() }
 
@@ -324,7 +325,8 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             SwipeDir.Up -> Unit
         }
     }
-    menuFor?.let { app -> AppSheet(app, s, a) { menuFor = null } }
+    menuFor?.let { app -> AppSheet(app, s, a, onRename = { renameFor = app; menuFor = null }) { menuFor = null } }
+    renameFor?.let { app -> RenameSheet(app, onSave = { n -> a.renameApp(app, n); renameFor = null }, onDismiss = { renameFor = null }) }
     folderMenu?.let { name -> FolderSheet(name, s, a, onDismiss = { folderMenu = null }, onAddApps = { pickFolder = name; folderMenu = null }) }
     if (s.showHomePrompt && !s.showSettings) HomePromptSheet(onSet = a.openDefaultLauncher, onNotNow = a.dismissHomePrompt)
     chooseFor?.let { g ->

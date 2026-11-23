@@ -384,12 +384,15 @@ class ScreenshotTest {
         rule.mainClock.advanceTimeBy(300)
         longPress("Calendar")
         rule.mainClock.advanceTimeBy(600)
-        rule.onNodeWithText("Rename").performClick()
+        assertTrue("no input box until asked", rule.onAllNodes(hasSetTextAction()).fetchSemanticsNodes().isEmpty())
+        rule.onNodeWithText("Rename app").performClick()
+        rule.mainClock.advanceTimeBy(600)
         rule.onNode(hasSetTextAction()).performTextReplacement("Dates")
         rule.onNodeWithText("Save").performClick()
         assertEquals("Calendar" to "Dates", renamed)
     }
-    @Test fun renameScreenshot() = foldShot("rename", inDrawer) { longPress("Camera"); rule.onNodeWithText("Rename").performClick() }
+    @Test fun renameRowScreenshot() = foldShot("rename_row", inDrawer) { longPress("Camera") }
+    @Test fun renameScreenshot() = foldShot("rename", inDrawer) { longPress("Camera"); rule.onNodeWithText("Rename app").performClick() }
 
     @Test fun sheetApp() = shotLongPress("sheet_app", base, "Calendar")
     @Test fun sheetFolder() = shotLongPress("sheet_folder", base.copy(showDrawer = true), "Money")
