@@ -15,6 +15,13 @@ Minimalist Launcher replaces the stock home screen with plain text on a near-bla
 > [!NOTE]
 > The app is called **Minimal** on the device. It needs Android 8.0 (API 26) or newer.
 
+<p align="center">
+  <img src="assets/screenshots/home.png" width="23%" alt="Home screen">
+  <img src="assets/screenshots/app-list.png" width="23%" alt="App list with the side strip">
+  <img src="assets/screenshots/app-menu.png" width="23%" alt="App menu">
+  <img src="assets/screenshots/gestures.png" width="23%" alt="Gesture settings">
+</p>
+
 ## Features
 
 - **Home screen:** clock, date, battery, favorite apps as a text list, pinned folders, today's screen time, and a dock of up to five apps.
