@@ -178,7 +178,7 @@ fun LauncherScreen(vm: LauncherViewModel, onRequestHome: () -> Unit) {
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
-        deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
+        deleteFolder = vm::deleteFolder, renameApp = vm::renameApp, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
         openDndAccess = vm::openDndAccess, openDefaultLauncher = onRequestHome, dismissHomePrompt = vm::dismissHomePrompt, runGesture = vm::runGesture, setGesture = vm::chooseGesture, openAccessibility = vm::openAccessibility, consumeSearchFocus = vm::consumeSearchFocus, setShowFolderCounts = vm::chooseShowFolderCounts, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
         moveHomeFolder = vm::moveHomeFolder, setShowFolderedApps = vm::chooseShowFoldered, setShowSwipeHint = vm::chooseShowHint,
     ) }

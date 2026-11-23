@@ -14,7 +14,8 @@ import kotlinx.coroutines.withContext
 
 class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     private val repo = AppRepository(app)
-    private var all: List<AppEntry> = emptyList()
+    private var allRaw: List<AppEntry> = emptyList()   // as installed, with the apps' own names
+    private var all: List<AppEntry> = emptyList()      // with the user's own names applied
 
     var favourites by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var dock by mutableStateOf<List<AppEntry>>(emptyList()); private set
@@ -53,7 +54,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     }
 
     // Start from the saved app list so the home screen appears at once; onResume then refreshes it in the background.
-    init { all = repo.cachedApps().ifEmpty { repo.loadApps() }; refresh(); refreshSystem(); repo.registerChangeListener(prefsListener) }
+    init { allRaw = repo.cachedApps().ifEmpty { repo.loadApps() }; refresh(); refreshSystem(); repo.registerChangeListener(prefsListener) }
 
     override fun onCleared() { repo.unregisterChangeListener(prefsListener); handler.removeCallbacks(reload) }
 
@@ -61,13 +62,14 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun reloadApps() {
         viewModelScope.launch {
             val fresh = withContext(Dispatchers.Default) { repo.loadApps() }
-            all = fresh
+            allRaw = fresh
             refresh()
         }
     }
 
     /** Rebuilds the screen state from the cached app list and saved layout. Cheap, and runs in the same frame. */
     fun refresh() {
+        all = applyAliases(allRaw, repo.aliases())
         hiddenKeys = repo.hidden()
         val byKey = all.associateBy { it.key }
         favourites = repo.favourites().mapNotNull { byKey[it] }
@@ -98,7 +100,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     private fun updateResults() {
         val q = query.trim().lowercase()
         results = if (q.isEmpty()) visibleApps(all, hiddenKeys, folderedKeys, showFolderedApps)
-        else all.filter { it.label.lowercase().contains(q) }
+        else all.filter { matchesQuery(it, q) }
             .sortedWith(compareBy({ !it.label.lowercase().startsWith(q) }, { it.label.lowercase() }))
     }
 
@@ -109,6 +111,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun uninstall(a: AppEntry) = repo.uninstall(a)
     fun toggleFolder(a: AppEntry, name: String) { repo.toggleFolder(a.key, name); refresh() }
     fun newFolder(a: AppEntry, name: String) { repo.createFolder(name)?.let { repo.addToFolder(a.key, it) }; refresh() }
+    fun renameApp(a: AppEntry, name: String?) { repo.setAlias(a.key, name); refresh() }
     fun deleteFolder(name: String) { repo.deleteFolder(name); refresh() }
     fun moveFavourite(a: AppEntry, delta: Int) { repo.moveFavourite(a.key, delta); refresh() }
     fun toggleHomeFolder(name: String) { repo.setHomeFolder(name, name !in homeFolders.map { it.name }); refresh() }

@@ -10,6 +10,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.swipe
 import androidx.compose.ui.test.doubleClick
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.performTextReplacement
+
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -374,6 +377,19 @@ class ScreenshotTest {
     }
     @Test fun settingsDisplayPageScreenshot() = foldShot("settings_display", base.copy(showSettings = true)) { rule.onNodeWithText("Display").performClick() }
     @Test fun settingsAppsPageScreenshot() = foldShot("settings_apps", base.copy(showSettings = true, hiddenApps = listOf(app("Timer")))) { rule.onNodeWithText("Apps and folders").performClick() }
+
+    @Test fun renamingAnApp() {
+        var renamed: Pair<String, String?>? = null
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base, LauncherActions(renameApp = { a, n -> renamed = a.label to n })) } }
+        rule.mainClock.advanceTimeBy(300)
+        longPress("Calendar")
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Rename").performClick()
+        rule.onNode(hasSetTextAction()).performTextReplacement("Dates")
+        rule.onNodeWithText("Save").performClick()
+        assertEquals("Calendar" to "Dates", renamed)
+    }
+    @Test fun renameScreenshot() = foldShot("rename", inDrawer) { longPress("Camera"); rule.onNodeWithText("Rename").performClick() }
 
     @Test fun sheetApp() = shotLongPress("sheet_app", base, "Calendar")
     @Test fun sheetFolder() = shotLongPress("sheet_folder", base.copy(showDrawer = true), "Money")

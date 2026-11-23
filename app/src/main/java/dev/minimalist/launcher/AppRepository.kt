@@ -19,7 +19,8 @@ enum class TextSize(val label: String, val scale: Float) { Small("Small", 0.85f)
 enum class SwipeDir(val label: String) { Up("Up"), Left("Right to left"), Right("Left to right") }
 
 @androidx.compose.runtime.Immutable
-data class AppEntry(val label: String, val packageName: String, val className: String) {
+/** [label] is what the user sees (their own name for the app, if they set one); [original] is the name the app ships with. */
+data class AppEntry(val label: String, val packageName: String, val className: String, val original: String = label) {
     val key get() = "$packageName/$className"
     val component get() = ComponentName(packageName, className)
     var icon: ImageBitmap? = null
@@ -80,8 +81,10 @@ class AppRepository(private val context: Context) {
         prefs.edit().putString("dock", list.joinToString("\n")).apply()
     }
 
+    private val iconCache = HashMap<String, ImageBitmap>()
+
     fun loadIcon(app: AppEntry) {
-        if (app.icon == null) app.icon = runCatching {
+        if (app.icon == null) app.icon = iconCache[app.key] ?: runCatching {
             val d = context.packageManager.getActivityIcon(app.component)
             if (d is AdaptiveIconDrawable) {
                 // Adaptive icons are 108dp layers with the visible mask in the centre 72dp.
@@ -89,7 +92,7 @@ class AppRepository(private val context: Context) {
                 val full = d.toBitmap(216, 216)
                 Bitmap.createBitmap(full, 36, 36, 144, 144).asImageBitmap()
             } else d.toBitmap(128, 128).asImageBitmap()
-        }.getOrNull()
+        }.getOrNull()?.also { iconCache[app.key] = it }
     }
 
     var use24h: Boolean
@@ -164,6 +167,18 @@ class AppRepository(private val context: Context) {
     fun setGesture(g: Gesture, b: GestureBinding) {
         prefs.edit().putString("gesture.${g.name}", b.action.name + (b.appKey?.let { ":$it" } ?: "")).apply()
     }
+
+    /** The user's own names for apps, by app key. */
+    fun aliases(): Map<String, String> = prefs.getString("aliases", "")!!.lineSequence()
+        .map { it.split('\t', limit = 2) }.filter { it.size == 2 && it[1].isNotBlank() }.associate { it[0] to it[1] }
+
+    fun replaceAliases(map: Map<String, String>) {
+        val clean = map.mapValues { cleanFolderName(it.value) }.filterValues { it.isNotEmpty() }
+        prefs.edit().putString("aliases", clean.entries.joinToString("\n") { "${it.key}\t${it.value}" }).apply()
+    }
+
+    /** A blank [name] removes the custom name. */
+    fun setAlias(key: String, name: String?) = replaceAliases(aliases().toMutableMap().apply { if (name.isNullOrBlank()) remove(key) else put(key, name) })
 
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 

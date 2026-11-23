@@ -101,6 +101,8 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
     val favIndex = s.favourites.indexOfFirst { it.key == app.key }
     var creating by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
+    var renaming by remember { mutableStateOf(false) }
+    var newName by remember { mutableStateOf(app.label) }
     val inFolder = s.folders.any { f -> f.apps.any { it.key == app.key } }
     // While an app sits in a folder it is already out of the main list, so hiding adds nothing (unless it is already hidden).
     val redundantHide = inFolder && !s.showFolderedApps && app.key !in s.hiddenKeys
@@ -113,6 +115,23 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
             subtitle = if (redundantHide) "Shown inside its folders only" else null,
             enabled = !redundantHide,
         ) { a.toggleHidden(app) }
+        if (!renaming) ActionRow("Rename") { renaming = true }
+        else {
+            val save = { a.renameApp(app, newName); onDismiss() }
+            TextField(
+                value = newName, onValueChange = { newName = it }, singleLine = true, shape = RoundedCornerShape(50),
+                placeholder = { Text("Name") }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                colors = TextFieldDefaults.colors(
+                    focusedContainerColor = Chip, unfocusedContainerColor = Chip,
+                    focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+                ),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { save() }),
+                supportingText = { Text("Original name: ${app.original}", color = Dim) },
+                trailingIcon = { TextButton({ save() }, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) { Text("Save") } },
+            )
+            if (app.label != app.original) ActionRow("Use the original name") { a.renameApp(app, null); onDismiss() }
+        }
         SheetLabel("Add to folders")
         s.folders.forEach { f ->
             val member = f.apps.any { it.key == app.key }

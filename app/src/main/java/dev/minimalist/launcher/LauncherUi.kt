@@ -6,6 +6,15 @@ import androidx.compose.runtime.Immutable
 fun visibleApps(all: List<AppEntry>, hidden: Set<String>, foldered: Set<String>, showFoldered: Boolean) =
     all.filter { it.key !in hidden && (showFoldered || it.key !in foldered) }
 
+/** Applies the user's own names and re-sorts by what they will see. Apps without a custom name are returned as they are. */
+fun applyAliases(raw: List<AppEntry>, aliases: Map<String, String>): List<AppEntry> {
+    if (aliases.isEmpty()) return raw
+    return raw.map { e -> aliases[e.key]?.let { e.copy(label = it) } ?: e }.sortedBy { it.label.lowercase() }
+}
+
+/** Search matches the name the user sees and the name the app ships with. */
+fun matchesQuery(app: AppEntry, q: String) = app.label.lowercase().contains(q) || app.original.lowercase().contains(q)
+
 @Immutable
 data class FolderUi(val name: String, val apps: List<AppEntry>)
 
@@ -29,7 +38,7 @@ class LauncherActions(
     val launch: (AppEntry) -> Unit = {}, val toggleFavourite: (AppEntry) -> Unit = {}, val toggleDock: (AppEntry) -> Unit = {},
     val toggleHidden: (AppEntry) -> Unit = {}, val uninstall: (AppEntry) -> Unit = {},
     val toggleFolder: (AppEntry, String) -> Unit = { _, _ -> }, val newFolder: (AppEntry, String) -> Unit = { _, _ -> },
-    val deleteFolder: (String) -> Unit = {}, val toggleDnd: () -> Unit = {},
+    val deleteFolder: (String) -> Unit = {}, val renameApp: (AppEntry, String?) -> Unit = { _, _ -> }, val toggleDnd: () -> Unit = {},
     val openUsageAccess: () -> Unit = {}, val openDndAccess: () -> Unit = {}, val openDefaultLauncher: () -> Unit = {}, val dismissHomePrompt: () -> Unit = {}, val runGesture: (Gesture) -> Unit = {}, val setGesture: (Gesture, GestureBinding) -> Unit = { _, _ -> },
     val openAccessibility: () -> Unit = {}, val consumeSearchFocus: () -> Unit = {}, val setShowFolderCounts: (Boolean) -> Unit = {},
     val set24h: (Boolean) -> Unit = {}, val setSwipe: (SwipeDir) -> Unit = {}, val moveFavourite: (AppEntry, Int) -> Unit = { _, _ -> },

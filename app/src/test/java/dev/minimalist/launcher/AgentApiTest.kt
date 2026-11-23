@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -60,6 +61,25 @@ class AgentApiTest {
         repo.swipe = SwipeDir.Up
         assertEquals(GestureAction.Flashlight, repo.gesture(Gesture.SwipeLeft).action)
         assertEquals(GestureAction.AppList, repo.gesture(Gesture.SwipeUp).action)
+    }
+
+    @Test fun renamingKeepsTheOriginalForSearchAndResorts() {
+        val raw = listOf(AppEntry("Alarms", "a", "A"), AppEntry("Camera", "c", "C"), AppEntry("Timer", "z", "Z"))
+        val named = applyAliases(raw, mapOf("z/Z" to "Meetings", "a/A" to "Alert"))
+        assertEquals(listOf("Alert", "Camera", "Meetings"), named.map { it.label })
+        assertEquals(listOf("Alarms", "Camera", "Timer"), named.map { it.original })
+        assertTrue(matchesQuery(named.first(), "alar"))      // still found by its original name
+        assertTrue(matchesQuery(named.first(), "ale"))       // and by the new one
+        assertEquals(raw, applyAliases(raw, emptyMap()))
+    }
+
+    @Test fun aliasStorageAndAgentPlan() {
+        repo.setAlias("a/A", "  Two   factor ")
+        assertEquals(mapOf("a/A" to "Two factor"), repo.aliases())
+        repo.setAlias("a/A", "  ")
+        assertEquals(emptyMap<String, String>(), repo.aliases())
+        AgentApi.apply(repo, JSONObject("""{"aliases":{"a/A":"Codes","x/X":"Ghost"}}"""), known)
+        assertEquals(mapOf("a/A" to "Codes"), repo.aliases())
     }
 
     @Test fun absentSectionsAreLeftAlone() {
