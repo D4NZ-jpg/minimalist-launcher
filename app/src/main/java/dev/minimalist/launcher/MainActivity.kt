@@ -1,11 +1,15 @@
 package dev.minimalist.launcher
 
+import android.app.role.RoleManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.os.BatteryManager
+import android.os.Build
 import android.os.Bundle
+import android.provider.Settings
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -98,11 +102,24 @@ internal val Dim = Color.White.copy(alpha = 0.7f)
 
 class MainActivity : ComponentActivity() {
     private val vm: LauncherViewModel by viewModels()
+    private val homeRequest = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { vm.refreshSystem() }
+
+    /** Shows Android's own "set as default home app" dialog (10+), or the home settings page on older versions. */
+    private fun requestDefaultHome() {
+        vm.dismissHomePrompt()
+        if (Build.VERSION.SDK_INT >= 29) {
+            val rm = getSystemService(RoleManager::class.java)
+            if (rm.isRoleAvailable(RoleManager.ROLE_HOME) && !rm.isRoleHeld(RoleManager.ROLE_HOME)) {
+                homeRequest.launch(rm.createRequestRoleIntent(RoleManager.ROLE_HOME)); return
+            }
+        }
+        startActivity(Intent(Settings.ACTION_HOME_SETTINGS))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherScreen(vm) } }
+        setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherScreen(vm, ::requestDefaultHome) } }
     }
 
     override fun onResume() { super.onResume(); vm.refresh(); vm.refreshSystem() }
@@ -116,7 +133,7 @@ class MainActivity : ComponentActivity() {
 private fun ordinal(d: Int) = if (d in 11..13) "th" else when (d % 10) { 1 -> "st"; 2 -> "nd"; 3 -> "rd"; else -> "th" }
 
 @Composable
-fun LauncherScreen(vm: LauncherViewModel) {
+fun LauncherScreen(vm: LauncherViewModel, onRequestHome: () -> Unit) {
     val context = LocalContext.current
     var now by remember { mutableStateOf(LocalDateTime.now()) }
     LaunchedEffect(Unit) {
@@ -149,14 +166,14 @@ fun LauncherScreen(vm: LauncherViewModel) {
         favourites = vm.favourites, dock = vm.dock, folders = vm.folders, homeFolders = vm.homeFolders, results = vm.results,
         allApps = vm.allApps, hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
-        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
+        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, isDefaultHome = vm.isDefaultHome, showHomePrompt = !vm.isDefaultHome && !vm.askedHomePrompt, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
     )
     val actions = LauncherActions(
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
         deleteFolder = vm::deleteFolder, createFolder = vm::createFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
-        openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
+        openDndAccess = vm::openDndAccess, openDefaultLauncher = onRequestHome, dismissHomePrompt = vm::dismissHomePrompt, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
         moveHomeFolder = vm::moveHomeFolder, setShowFolderedApps = vm::chooseShowFoldered, setShowSwipeHint = vm::chooseShowHint,
     )
     LauncherContent(state, actions)
@@ -247,6 +264,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     }
     menuFor?.let { app -> AppSheet(app, s, a) { menuFor = null } }
     folderMenu?.let { name -> FolderSheet(name, s, a, onDismiss = { folderMenu = null }, onAddApps = { pickFolder = name; folderMenu = null }) }
+    if (s.showHomePrompt && !s.showSettings) HomePromptSheet(onSet = a.openDefaultLauncher, onNotNow = a.dismissHomePrompt)
     if (creatingFolder) NewFolderSheet(onCreate = { n -> a.createFolder(n); pickFolder = cleanFolderName(n); creatingFolder = false }, onDismiss = { creatingFolder = false })
     pickFolder?.let { name ->
         BackHandler { pickFolder = null }
@@ -408,7 +426,9 @@ private fun SettingsScreen(s: LauncherState, a: LauncherActions) {
                 SectionLabel("Permissions")
                 SettingRow("Usage access", "Needed for \"Today's Usage\"", onClick = a.openUsageAccess) { StatusText(s.usageGranted) }
                 SettingRow("Do Not Disturb access", "Needed for the Do Not Disturb (moon) button", onClick = a.openDndAccess) { StatusText(s.dndGranted) }
-                SettingRow("Default launcher", "Open Android home settings", onClick = a.openDefaultLauncher)
+                SettingRow("Home app", if (s.isDefaultHome) "This launcher opens when you press Home" else "Not your home app. Tap to set it", onClick = a.openDefaultLauncher) {
+                    Text(if (s.isDefaultHome) "Yes" else "No", color = if (s.isDefaultHome) Color.White else Dim, fontSize = 15.sp)
+                }
                 SectionLabel("Hidden apps")
                 SettingRow("Hide more apps…", "Choose apps to remove from the app list", onClick = { picking = true })
                 if (s.hiddenApps.isEmpty()) Text("None hidden", color = Color.Gray, modifier = Modifier.padding(8.dp))

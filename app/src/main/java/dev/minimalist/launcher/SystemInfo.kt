@@ -24,6 +24,13 @@ object SystemInfo {
         return ms / 60_000
     }
 
+    /** True when pressing Home would open this launcher without asking (it is the chosen home app). */
+    fun isDefaultHome(c: Context): Boolean {
+        val home = android.content.Intent(android.content.Intent.ACTION_MAIN).addCategory(android.content.Intent.CATEGORY_HOME)
+        val chosen = c.packageManager.resolveActivity(home, android.content.pm.PackageManager.MATCH_DEFAULT_ONLY)
+        return chosen?.activityInfo?.packageName == c.packageName
+    }
+
     fun hasDndAccess(c: Context) = c.getSystemService(NotificationManager::class.java).isNotificationPolicyAccessGranted
 
     fun isDndOn(c: Context): Boolean {

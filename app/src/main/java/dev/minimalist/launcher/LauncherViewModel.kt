@@ -33,6 +33,8 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var usageGranted by mutableStateOf(false); private set
     var dndGranted by mutableStateOf(false); private set
     var dnd by mutableStateOf(false); private set
+    var isDefaultHome by mutableStateOf(true); private set
+    var askedHomePrompt by mutableStateOf(repo.askedHomePrompt); private set
 
     // Reload when something else (the ADB agent receiver) changes the stored layout.
     private val handler = android.os.Handler(android.os.Looper.getMainLooper())
@@ -63,6 +65,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun refreshSystem() {
         usageGranted = SystemInfo.hasUsageAccess(app)
         usageMinutes = if (usageGranted) runCatching { SystemInfo.usageTodayMinutes(app) }.getOrNull() else null
+        isDefaultHome = SystemInfo.isDefaultHome(app)
         dndGranted = SystemInfo.hasDndAccess(app)
         dnd = dndGranted && SystemInfo.isDndOn(app)
     }
@@ -101,7 +104,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     fun openUsageAccess() = openSettings(Settings.ACTION_USAGE_ACCESS_SETTINGS)
     fun openDndAccess() = openSettings(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
-    fun openDefaultLauncher() = openSettings(Settings.ACTION_HOME_SETTINGS)
+    fun dismissHomePrompt() { repo.askedHomePrompt = true; askedHomePrompt = true }
     private fun openSettings(action: String) =
         app.startActivity(Intent(action).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 }

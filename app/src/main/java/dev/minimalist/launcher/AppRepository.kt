@@ -126,6 +126,11 @@ class AppRepository(private val context: Context) {
         get() = prefs.getBoolean("showHint", false)
         set(v) { prefs.edit().putBoolean("showHint", v).apply() }
 
+    /** Set once the first-launch "make this your home app" prompt has been shown. */
+    var askedHomePrompt: Boolean
+        get() = prefs.getBoolean("askedHome", false)
+        set(v) { prefs.edit().putBoolean("askedHome", v).apply() }
+
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 
     /** folder name -> member app keys */

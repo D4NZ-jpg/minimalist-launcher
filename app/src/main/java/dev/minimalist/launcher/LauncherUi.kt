@@ -14,6 +14,7 @@ data class LauncherState(
     val allApps: List<AppEntry> = emptyList(), val hiddenKeys: Set<String> = emptySet(), val hiddenApps: List<AppEntry> = emptyList(),
     val query: String = "", val showDrawer: Boolean = false, val showSettings: Boolean = false,
     val dnd: Boolean = false, val dndGranted: Boolean = false, val use24h: Boolean = false, val swipe: SwipeDir = SwipeDir.Up, val textSize: TextSize = TextSize.Medium, val showFolderedApps: Boolean = false, val showSwipeHint: Boolean = false,
+    val isDefaultHome: Boolean = true, val showHomePrompt: Boolean = false,
 )
 
 class LauncherActions(
@@ -22,7 +23,7 @@ class LauncherActions(
     val toggleHidden: (AppEntry) -> Unit = {}, val uninstall: (AppEntry) -> Unit = {},
     val toggleFolder: (AppEntry, String) -> Unit = { _, _ -> }, val newFolder: (AppEntry, String) -> Unit = { _, _ -> },
     val deleteFolder: (String) -> Unit = {}, val createFolder: (String) -> Unit = {}, val toggleDnd: () -> Unit = {},
-    val openUsageAccess: () -> Unit = {}, val openDndAccess: () -> Unit = {}, val openDefaultLauncher: () -> Unit = {},
+    val openUsageAccess: () -> Unit = {}, val openDndAccess: () -> Unit = {}, val openDefaultLauncher: () -> Unit = {}, val dismissHomePrompt: () -> Unit = {},
     val set24h: (Boolean) -> Unit = {}, val setSwipe: (SwipeDir) -> Unit = {}, val moveFavourite: (AppEntry, Int) -> Unit = { _, _ -> },
     val toggleHomeFolder: (String) -> Unit = {}, val moveHomeFolder: (String, Int) -> Unit = { _, _ -> },
     val setShowFolderedApps: (Boolean) -> Unit = {}, val setShowSwipeHint: (Boolean) -> Unit = {}, val setTextSize: (TextSize) -> Unit = {},

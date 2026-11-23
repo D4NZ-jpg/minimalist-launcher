@@ -154,6 +154,23 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
     }
 }
 
+/** One-time first-launch offer to become the default home app. */
+@Composable
+fun HomePromptSheet(onSet: () -> Unit, onNotNow: () -> Unit) {
+    SheetHost(onNotNow) {
+        SheetTitle("Make this your home app")
+        Text(
+            "Pressing Home will open this launcher. Android will ask you to confirm.",
+            color = Dim, fontSize = 14.sp, modifier = Modifier.padding(bottom = 16.dp),
+        )
+        Text(
+            "Set as home app", color = Color.Black, fontSize = 15.sp,
+            modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White).clickable(onClick = onSet).padding(horizontal = 18.dp, vertical = 10.dp),
+        )
+        Text("Not now", color = Dim, fontSize = 15.sp, modifier = Modifier.padding(top = 8.dp).clickable(onClick = onNotNow).padding(vertical = 10.dp))
+    }
+}
+
 /** Black-and-white switch: no accent colour. */
 @Composable
 internal fun monoSwitchColors() = SwitchDefaults.colors(

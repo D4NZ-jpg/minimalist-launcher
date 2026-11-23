@@ -174,6 +174,17 @@ class ScreenshotTest {
     @Test fun foldFolderSheet() = foldShot("fold_folder_sheet", inDrawer) { longPress("Money") }
     @Test fun foldDrawerExpanded() = foldShot("fold_drawer_expanded", inDrawer) { rule.onNodeWithText("Money").performClick(); rule.onNodeWithText("Tools").performClick() }
     @Test fun foldHomeExpanded() = foldShot("fold_home_expanded", base) { rule.onNodeWithText("Tools").performClick() }
+    @Test fun homePromptShowsAndCanBeDismissed() {
+        var set = 0; var dismissed = 0
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(isDefaultHome = false, showHomePrompt = true), LauncherActions(openDefaultLauncher = { set++ }, dismissHomePrompt = { dismissed++ })) } }
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Set as home app").performClick()
+        rule.onNodeWithText("Not now").performClick()
+        assertEquals(1, set); assertEquals(1, dismissed)
+    }
+    @Test fun homePromptScreenshot() = foldShot("home_prompt", base.copy(isDefaultHome = false, showHomePrompt = true))
+    @Test fun settingsNotDefault() = foldShot("settings_not_default", base.copy(showSettings = true, isDefaultHome = false))
+
     @Test fun foldCreate() = foldShot("fold_create", inDrawer) { rule.onNodeWithText("+ New folder").performClick() }
     @Test fun foldPicker() = foldShot("fold_picker", inDrawer.copy(allApps = all)) { longPress("Money"); rule.onNodeWithText("Add apps…").performClick() }
     @Test fun foldEmptyFolder() = foldShot("fold_empty", inDrawer.copy(folders = base.folders + FolderUi("Games", emptyList()))) { rule.onNodeWithText("Games").performClick() }
