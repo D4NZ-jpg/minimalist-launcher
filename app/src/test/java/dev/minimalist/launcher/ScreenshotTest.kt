@@ -117,6 +117,96 @@ class ScreenshotTest {
         assertTrue("list should still be right of rest ($rest): $xs", xs.max() > rest + 20)
     }
 
+    /** Sets up LauncherContent whose open/closed state is driven by the swipe, like the real view model. */
+    private fun followSetup(swipe: SwipeDir, startOpen: Boolean = false): (Boolean?) -> Boolean {
+        var open by mutableStateOf(startOpen); var lastCall: Boolean? = null
+        rule.mainClock.autoAdvance = false
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showDrawer = open, swipe = swipe), LauncherActions(showDrawer = { open = it; lastCall = it })) } }
+        rule.mainClock.advanceTimeBy(1000)
+        return { if (it == null) lastCall ?: error("showDrawer was never called") else lastCall == it }
+    }
+    private fun filesXs() = rule.onAllNodesWithText("Files").fetchSemanticsNodes().map { it.positionInRoot.x }
+
+    @Test fun layersFollowTheFingerAndBothMove() {
+        val called = followSetup(SwipeDir.Left)
+        val rest = filesXs().single()
+        val w = rule.onRoot().fetchSemanticsNode().size.width
+        rule.onRoot().performTouchInput {
+            down(Offset(width * 0.8f, height * 0.5f)); advanceEventTime(16); moveBy(Offset(-4f, 0f))
+            repeat(8) { advanceEventTime(30); moveBy(Offset(-w * 0.05f, 0f)) }
+        }
+        rule.mainClock.advanceTimeByFrame(); filesXs()
+        val xs = filesXs()
+        assertEquals("home and list are both on screen while the finger is down", 2, xs.size)
+        // ~0.4 of the screen: home has left by about 0.4w, the list still has about 0.6w to arrive.
+        assertTrue("home moved left: $xs vs $rest", xs.min() < rest - w * 0.3f && xs.min() > rest - w * 0.5f)
+        assertTrue("list still approaching: $xs vs $rest", xs.max() > rest + w * 0.5f && xs.max() < rest + w * 0.7f)
+        rule.onRoot().performTouchInput { up() }
+    }
+
+    @Test fun followMidDragScreenshot() {
+        followSetup(SwipeDir.Left)
+        val w = rule.onRoot().fetchSemanticsNode().size.width
+        rule.onRoot().performTouchInput {
+            down(Offset(width * 0.85f, height * 0.5f)); advanceEventTime(16); moveBy(Offset(-4f, 0f))
+            repeat(8) { advanceEventTime(30); moveBy(Offset(-w * 0.055f, 0f)) }
+        }
+        rule.mainClock.advanceTimeByFrame(); filesXs()
+        rule.onRoot().captureRoboImage("build/screenshots/follow_mid.png")
+        rule.onRoot().performTouchInput { up() }
+    }
+
+    @Test fun releasingBeforeHalfwaySettlesBackToHome() {
+        val called = followSetup(SwipeDir.Left)
+        val w = rule.onRoot().fetchSemanticsNode().size.width
+        rule.onRoot().performTouchInput {
+            down(Offset(width * 0.8f, height * 0.5f)); advanceEventTime(16); moveBy(Offset(-4f, 0f))
+            repeat(10) { advanceEventTime(100); moveBy(Offset(-w * 0.025f, 0f)) }
+            advanceEventTime(300); up()
+        }
+        rule.mainClock.advanceTimeBy(1500); filesXs()
+        assertTrue("showDrawer(false) after a short slow drag", called(false))
+        assertEquals(1, filesXs().size)
+    }
+
+    @Test fun draggingPastHalfwayOpensTheList() {
+        val called = followSetup(SwipeDir.Left)
+        val w = rule.onRoot().fetchSemanticsNode().size.width
+        rule.onRoot().performTouchInput {
+            down(Offset(width * 0.9f, height * 0.5f)); advanceEventTime(16); moveBy(Offset(-4f, 0f))
+            repeat(13) { advanceEventTime(100); moveBy(Offset(-w * 0.05f, 0f)) }
+            advanceEventTime(300); up()
+        }
+        rule.mainClock.advanceTimeBy(1500); filesXs()
+        assertTrue(called(true))
+        assertTrue("home no longer composed once the list has arrived", rule.onAllNodesWithText("Messages").fetchSemanticsNodes().isEmpty())
+    }
+
+    @Test fun aQuickFlickOpensEvenFromAShortDistance() {
+        val called = followSetup(SwipeDir.Left)
+        val w = rule.onRoot().fetchSemanticsNode().size.width
+        rule.onRoot().performTouchInput {
+            down(Offset(width * 0.8f, height * 0.5f)); advanceEventTime(8); moveBy(Offset(-4f, 0f))
+            repeat(8) { advanceEventTime(8); moveBy(Offset(-w * 0.03f, 0f)) }
+            up()
+        }
+        rule.mainClock.advanceTimeBy(1500); filesXs()
+        assertTrue("a fast flick should complete the open", called(true))
+    }
+
+    @Test fun draggingBackClosesAnOpenList() {
+        val called = followSetup(SwipeDir.Left, startOpen = true)
+        val w = rule.onRoot().fetchSemanticsNode().size.width
+        rule.onRoot().performTouchInput {
+            down(Offset(width * 0.2f, height * 0.5f)); advanceEventTime(16); moveBy(Offset(4f, 0f))
+            repeat(14) { advanceEventTime(100); moveBy(Offset(w * 0.05f, 0f)) }
+            advanceEventTime(300); up()
+        }
+        rule.mainClock.advanceTimeBy(1500); filesXs()
+        assertTrue(called(false))
+        assertTrue(rule.onAllNodesWithText("Messages").fetchSemanticsNodes().isNotEmpty())
+    }
+
     @Test fun openingAnimatesBetweenHomeAndList() = checkTransition(true)
     @Test fun closingAnimatesBetweenListAndHome() = checkTransition(false)
 

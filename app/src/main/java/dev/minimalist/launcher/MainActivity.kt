@@ -18,6 +18,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.unit.IntSize
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -84,12 +89,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
-
-private enum class Screen { Home, Drawer, Settings }
 
 internal val Bg = Color(0xFF0B0B0B)
 private val LocalTextScale = compositionLocalOf { 1f }
@@ -189,67 +193,104 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     BackHandler(enabled = s.showDrawer && !s.showSettings) { a.showDrawer(false) }
 
     Box(Modifier.fillMaxSize().background(Bg)) {
+    var size by remember { mutableStateOf(IntSize(1, 1)) }
+    val scope = rememberCoroutineScope()
+    // 0 = home fully shown, 1 = app list fully shown. While a finger is down both layers follow it;
+    // on release they finish the move from wherever the finger left them.
+    val anim = remember { Animatable(if (s.showDrawer) 1f else 0f) }
+    var dragging by remember { mutableStateOf(false) }
+    var dragP by remember { mutableFloatStateOf(0f) }
+    fun progress() = if (dragging) dragP else anim.value
+    fun extent() = (if (s.swipe == SwipeDir.Up) size.height else size.width).toFloat().coerceAtLeast(1f)
+    val homeVisible by remember { derivedStateOf { progress() < 1f } }
+    val listVisible by remember { derivedStateOf { progress() > 0f } }
+
+    LaunchedEffect(s.showDrawer) {
+        val target = if (s.showDrawer) 1f else 0f
+        if (!dragging && anim.targetValue != target) anim.animateTo(target, tween(300, easing = FastOutSlowInEasing))
+    }
+
+    /** Finishes a drag: [axisVelocity] is px/s, positive toward opening the list. */
+    fun settle(axisVelocity: Float) {
+        val target = when {
+            axisVelocity > 900f -> 1f
+            axisVelocity < -900f -> 0f
+            else -> if (dragP > 0.5f) 1f else 0f
+        }
+        scope.launch {
+            anim.snapTo(dragP); dragging = false
+            a.showDrawer(target == 1f)
+            anim.animateTo(target, spring(dampingRatio = 1f, stiffness = 380f), initialVelocity = axisVelocity / extent())
+        }
+    }
+
     Box(
-        Modifier.fillMaxSize()
+        Modifier.fillMaxSize().onSizeChanged { size = it }
             .pointerInput(s.swipe, s.showDrawer, s.showSettings) {
                 if (s.showSettings) return@pointerInput
-                var dx = 0f; var dy = 0f; var fired = false
-                detectDragGestures(onDragStart = { dx = 0f; dy = 0f; fired = false }) { _, drag ->
-                    dx += drag.x; dy += drag.y
-                    if (fired) return@detectDragGestures
-                    val t = 80f
-                    val open = when (s.swipe) {
-                        SwipeDir.Up -> dy < -t && -dy > kotlin.math.abs(dx)
-                        SwipeDir.Left -> dx < -t && -dx > kotlin.math.abs(dy)
-                        SwipeDir.Right -> dx > t && dx > kotlin.math.abs(dy)
-                    }
-                    // For sideways swipes the opposite sideways swipe closes the list again.
-                    val close = s.showDrawer && when (s.swipe) {
-                        SwipeDir.Up -> false
-                        SwipeDir.Left -> dx > t && dx > kotlin.math.abs(dy)
-                        SwipeDir.Right -> dx < -t && -dx > kotlin.math.abs(dy)
-                    }
-                    if (!s.showDrawer && open) { fired = true; a.showDrawer(true) }
-                    else if (close) { fired = true; a.showDrawer(false) }
+                val vertical = s.swipe == SwipeDir.Up
+                val sign = if (s.swipe == SwipeDir.Right) 1f else -1f   // finger direction that opens the list
+                val tracker = VelocityTracker()
+                var locked = false; var along = 0f; var across = 0f
+                fun end() {
+                    if (!locked) return
+                    val v = tracker.calculateVelocity()
+                    settle((if (vertical) v.y else v.x) * sign)
+                    locked = false
+                }
+                detectDragGestures(
+                    onDragStart = { locked = false; along = 0f; across = 0f; tracker.resetTracking() },
+                    onDragEnd = { end() },
+                    onDragCancel = { end() },
+                ) { change, drag ->
+                    val a1 = if (vertical) drag.y else drag.x
+                    val c1 = if (vertical) drag.x else drag.y
+                    tracker.addPosition(change.uptimeMillis, change.position)
+                    along += a1; across += c1
+                    if (!locked) {
+                        val opening = !s.showDrawer && along * sign > 0
+                        // For sideways swipes the opposite sideways drag pulls the list closed again.
+                        val closing = s.showDrawer && !vertical && along * sign < 0
+                        if ((opening || closing) && kotlin.math.abs(along) > kotlin.math.abs(across)) {
+                            locked = true
+                            dragP = (anim.value + along * sign / extent()).coerceIn(0f, 1f)
+                            dragging = true
+                            scope.launch { anim.stop() }
+                        } else return@detectDragGestures
+                    } else dragP = (dragP + a1 * sign / extent()).coerceIn(0f, 1f)
+                    change.consume()
                 }
             }
-            .statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
     ) {
-        val screen = when { s.showSettings -> Screen.Settings; s.showDrawer -> Screen.Drawer; else -> Screen.Home }
-        // The app list enters from the side the swipe came from, and leaves the opposite way.
-        val openDir = when (s.swipe) {
-            SwipeDir.Up -> AnimatedContentTransitionScope.SlideDirection.Up
-            SwipeDir.Left -> AnimatedContentTransitionScope.SlideDirection.Left
-            SwipeDir.Right -> AnimatedContentTransitionScope.SlideDirection.Right
-        }
-        val closeDir = when (s.swipe) {
-            SwipeDir.Up -> AnimatedContentTransitionScope.SlideDirection.Down
-            SwipeDir.Left -> AnimatedContentTransitionScope.SlideDirection.Right
-            SwipeDir.Right -> AnimatedContentTransitionScope.SlideDirection.Left
-        }
         CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }) {
-            AnimatedContent(
-                targetState = screen, label = "screen",
-                transitionSpec = {
-                    val move = tween<IntOffset>(320, easing = FastOutSlowInEasing)
-                    when {
-                        // Both screens travel together, like a push: the list arrives from the swipe side
-                        // while home leaves the same way.
-                        initialState == Screen.Home && targetState == Screen.Drawer ->
-                            slideIntoContainer(openDir, move) togetherWith slideOutOfContainer(openDir, move)
-                        initialState == Screen.Drawer && targetState == Screen.Home ->
-                            slideIntoContainer(closeDir, move) togetherWith slideOutOfContainer(closeDir, move)
-                        else -> fadeIn(tween(160)) togetherWith fadeOut(tween(120))
+            if (homeVisible) Box(
+                Modifier.fillMaxSize()
+                    .offset {
+                        val p = progress()
+                        when (s.swipe) {
+                            SwipeDir.Up -> IntOffset(0, (-p * size.height).roundToInt())
+                            SwipeDir.Left -> IntOffset((-p * size.width).roundToInt(), 0)
+                            SwipeDir.Right -> IntOffset((p * size.width).roundToInt(), 0)
+                        }
                     }
-                },
-            ) { sc ->
-                Box(Modifier.fillMaxSize().background(Bg)) {
-                    when (sc) {
-                        Screen.Settings -> SettingsScreen(s, a)
-                        Screen.Drawer -> Drawer(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
-                        Screen.Home -> Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it })
+                    .background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
+            ) { Home(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it }) }
+
+            if (listVisible) Box(
+                Modifier.fillMaxSize()
+                    .offset {
+                        val q = 1f - progress()
+                        when (s.swipe) {
+                            SwipeDir.Up -> IntOffset(0, (q * size.height).roundToInt())
+                            SwipeDir.Left -> IntOffset((q * size.width).roundToInt(), 0)
+                            SwipeDir.Right -> IntOffset((-q * size.width).roundToInt(), 0)
+                        }
                     }
-                }
+                    .background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
+            ) { Drawer(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it }) }
+
+            AnimatedVisibility(s.showSettings, enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
+                Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) { SettingsScreen(s, a) }
             }
         }
 
