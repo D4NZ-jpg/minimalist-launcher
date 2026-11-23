@@ -408,6 +408,17 @@ class ScreenshotTest {
         assertTrue("the Save button should move up by about the keyboard height: $before -> $after", before - after > 700f)
     }
 
+    @Test fun onlyOneFolderIsOpenAtATime() {
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(inDrawer, LauncherActions()) } }
+        fun shown(app: String) = rule.onAllNodesWithText(app).fetchSemanticsNodes().isNotEmpty()
+        rule.onNodeWithText("Money").performClick()
+        assertTrue(shown("Wallet")); assertTrue(!shown("Timer"))
+        rule.onNodeWithText("Tools").performClick()
+        assertTrue("opening Tools closes Money", !shown("Wallet")); assertTrue(shown("Timer"))
+        rule.onNodeWithText("Tools").performClick()
+        assertTrue("tapping the open folder closes it", !shown("Timer") && !shown("Wallet"))
+    }
+
     @Test fun renameRowScreenshot() = foldShot("rename_row", inDrawer) { longPress("Camera") }
     @Test fun renameScreenshot() = foldShot("rename", inDrawer) { longPress("Camera"); rule.onNodeWithText("Rename app").performClick() }
 

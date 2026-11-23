@@ -393,7 +393,10 @@ private fun Home(s: LauncherState, a: LauncherActions, expanded: SnapshotStateLi
     }
 }
 
-private fun toggle(list: SnapshotStateList<String>, name: String) { if (!list.remove(name)) list.add(name) }
+/** Opens a folder and closes any other, so at most one is open at a time. Tapping the open one closes it. */
+private fun toggle(list: SnapshotStateList<String>, name: String) {
+    if (!list.remove(name)) { list.clear(); list.add(name) }
+}
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
