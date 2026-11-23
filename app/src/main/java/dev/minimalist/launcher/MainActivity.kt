@@ -168,7 +168,7 @@ fun LauncherScreen(vm: LauncherViewModel, onRequestHome: () -> Unit) {
         favourites = vm.favourites, dock = vm.dock, folders = vm.folders, homeFolders = vm.homeFolders, results = vm.results,
         allApps = vm.allApps, hiddenKeys = vm.hiddenKeys, hiddenApps = vm.hiddenApps, query = vm.query,
         showDrawer = vm.showDrawer, showSettings = vm.showSettings,
-        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, isDefaultHome = vm.isDefaultHome, showFolderCounts = vm.showFolderCounts, showHomePrompt = !vm.isDefaultHome && !vm.askedHomePrompt, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
+        dnd = vm.dnd, dndGranted = vm.dndGranted, use24h = vm.use24h, swipe = vm.swipe, isDefaultHome = vm.isDefaultHome, gestures = vm.gestures, accessibilityOn = vm.accessibilityOn, focusSearch = vm.focusSearch, showFolderCounts = vm.showFolderCounts, showHomePrompt = !vm.isDefaultHome && !vm.askedHomePrompt, textSize = vm.textSize, showFolderedApps = vm.showFolderedApps, showSwipeHint = vm.showSwipeHint,
     )
     // Built once, so unchanged screens are skipped instead of redrawn whenever the clock ticks.
     val actions = remember(vm, onRequestHome) { LauncherActions(
@@ -176,7 +176,7 @@ fun LauncherScreen(vm: LauncherViewModel, onRequestHome: () -> Unit) {
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
         deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
-        openDndAccess = vm::openDndAccess, openDefaultLauncher = onRequestHome, dismissHomePrompt = vm::dismissHomePrompt, setShowFolderCounts = vm::chooseShowFolderCounts, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
+        openDndAccess = vm::openDndAccess, openDefaultLauncher = onRequestHome, dismissHomePrompt = vm::dismissHomePrompt, runGesture = vm::runGesture, setGesture = vm::chooseGesture, openAccessibility = vm::openAccessibility, consumeSearchFocus = vm::consumeSearchFocus, setShowFolderCounts = vm::chooseShowFolderCounts, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
         moveHomeFolder = vm::moveHomeFolder, setShowFolderedApps = vm::chooseShowFoldered, setShowSwipeHint = vm::chooseShowHint,
     ) }
     LauncherContent(state, actions)

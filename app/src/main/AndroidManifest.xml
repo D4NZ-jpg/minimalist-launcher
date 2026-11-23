@@ -3,6 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.EXPAND_STATUS_BAR" />
     <!-- Needed to list all launchable apps; intent query below covers launchers on API 30+ -->
     <queries>
         <intent>
@@ -37,5 +38,16 @@
                 <action android:name="dev.minimalist.launcher.AGENT" />
             </intent-filter>
         </receiver>
+        <!-- Only used to lock the screen / open the notification shade from a gesture; it reads nothing. -->
+        <service
+            android:name=".LockAccessibilityService"
+            android:exported="false"
+            android:label="Minimal gestures"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data android:name="android.accessibilityservice" android:resource="@xml/lock_accessibility_service" />
+        </service>
     </application>
 </manifest>

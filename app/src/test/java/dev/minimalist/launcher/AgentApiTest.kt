@@ -44,6 +44,24 @@ class AgentApiTest {
         assertEquals(listOf("Plain", "Tab here newline", "Ünïcode ✓"), back.map { it.label })
     }
 
+    @Test fun gestureDefaultsAndBindings() {
+        assertEquals(GestureAction.Notifications, repo.gesture(Gesture.SwipeDown).action)
+        assertEquals(GestureAction.LauncherSettings, repo.gesture(Gesture.LongPress).action)
+        assertEquals(GestureAction.None, repo.gesture(Gesture.DoubleTap).action)
+        repo.setGesture(Gesture.DoubleTap, GestureBinding(GestureAction.LaunchApp, "pkg.a/pkg.a.Main"))
+        assertEquals(GestureBinding(GestureAction.LaunchApp, "pkg.a/pkg.a.Main"), repo.gesture(Gesture.DoubleTap))
+    }
+
+    @Test fun theSwipeThatOpensTheListIsAlwaysAppList() {
+        repo.swipe = SwipeDir.Left
+        assertEquals(GestureAction.AppList, repo.gesture(Gesture.SwipeLeft).action)
+        repo.setGesture(Gesture.SwipeLeft, GestureBinding(GestureAction.Flashlight))   // ignored while it opens the list
+        assertEquals(GestureAction.AppList, repo.gesture(Gesture.SwipeLeft).action)
+        repo.swipe = SwipeDir.Up
+        assertEquals(GestureAction.Flashlight, repo.gesture(Gesture.SwipeLeft).action)
+        assertEquals(GestureAction.AppList, repo.gesture(Gesture.SwipeUp).action)
+    }
+
     @Test fun absentSectionsAreLeftAlone() {
         AgentApi.apply(repo, JSONObject("""{"favourites":["a/A"]}"""), known)
         AgentApi.apply(repo, JSONObject("""{"hidden":["b/B"]}"""), known)

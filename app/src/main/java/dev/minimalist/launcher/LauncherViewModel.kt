@@ -39,6 +39,10 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     var dndGranted by mutableStateOf(false); private set
     var dnd by mutableStateOf(false); private set
     var isDefaultHome by mutableStateOf(true); private set
+    var gestures by mutableStateOf(readGestures()); private set
+    var accessibilityOn by mutableStateOf(false); private set
+    var focusSearch by mutableStateOf(false); private set
+    private val system = SystemActions(app)
     var askedHomePrompt by mutableStateOf(repo.askedHomePrompt); private set
 
     // Reload when something else (the ADB agent receiver) changes the stored layout.
@@ -84,6 +88,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
             viewModelScope.launch { usageMinutes = withContext(Dispatchers.Default) { runCatching { SystemInfo.usageTodayMinutes(app) }.getOrNull() } }
         } else usageMinutes = null
         isDefaultHome = SystemInfo.isDefaultHome(app)
+        accessibilityOn = LockAccessibilityService.isEnabled
         dndGranted = SystemInfo.hasDndAccess(app)
         dnd = dndGranted && SystemInfo.isDndOn(app)
     }
@@ -112,7 +117,35 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun chooseShowFolderCounts(on: Boolean) { repo.showFolderCounts = on; showFolderCounts = on }
     fun chooseShowHint(on: Boolean) { repo.showSwipeHint = on; showSwipeHint = on }
     fun chooseTextSize(t: TextSize) { repo.textSize = t; textSize = t }
-    fun chooseSwipe(d: SwipeDir) { repo.swipe = d; swipe = d }
+    fun chooseSwipe(d: SwipeDir) { repo.swipe = d; swipe = d; gestures = readGestures() }
+    private fun readGestures() = Gesture.entries.associateWith { repo.gesture(it) }
+    fun chooseGesture(g: Gesture, b: GestureBinding) { repo.setGesture(g, b); gestures = readGestures() }
+    fun consumeSearchFocus() { focusSearch = false }
+    fun openAccessibility() = openSettings(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+
+    /** Does what the user bound to [g]. Tells them when something needs a permission or is unavailable. */
+    fun runGesture(g: Gesture) {
+        val b = repo.gesture(g)
+        when (b.action) {
+            GestureAction.None, GestureAction.AppList -> Unit
+            GestureAction.Notifications -> if (!system.expandNotifications()) needAccessibility("open notifications")
+            GestureAction.QuickSettings -> if (!system.expandQuickSettings()) needAccessibility("open quick settings")
+            GestureAction.LockScreen -> if (!system.lockScreen()) needAccessibility("lock the screen")
+            GestureAction.Flashlight -> if (!system.toggleFlashlight()) toast("This phone has no flashlight")
+            GestureAction.Dnd -> toggleDnd()
+            GestureAction.Search -> { showDrawer = true; focusSearch = true }
+            GestureAction.LauncherSettings -> showSettings = true
+            GestureAction.LaunchApp -> all.firstOrNull { it.key == b.appKey }?.let { launch(it) } ?: toast("Choose an app for this gesture in Settings")
+        }
+    }
+
+    private fun toast(msg: String) = android.widget.Toast.makeText(app, msg, android.widget.Toast.LENGTH_SHORT).show()
+
+    /** Lock and notification gestures can need the accessibility service; send the user to switch it on. */
+    private fun needAccessibility(what: String) {
+        toast("Turn on \"Minimal gestures\" in Accessibility to $what")
+        openAccessibility()
+    }
     fun set24h(on: Boolean) { repo.use24h = on; use24h = on }
 
     fun toggleDnd() {

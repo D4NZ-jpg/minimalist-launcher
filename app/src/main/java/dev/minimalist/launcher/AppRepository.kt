@@ -148,6 +148,23 @@ class AppRepository(private val context: Context) {
         get() = prefs.getBoolean("folderCounts", false)
         set(v) { prefs.edit().putBoolean("folderCounts", v).apply() }
 
+    /** What a gesture does. The swipe that opens the app list is always bound to [GestureAction.AppList]. */
+    fun gesture(g: Gesture): GestureBinding {
+        if (g == swipe.gesture()) return GestureBinding(GestureAction.AppList)
+        val raw = prefs.getString("gesture.${g.name}", null) ?: return when (g) {
+            Gesture.SwipeDown -> GestureBinding(GestureAction.Notifications)
+            Gesture.LongPress -> GestureBinding(GestureAction.LauncherSettings)
+            else -> GestureBinding(GestureAction.None)
+        }
+        val parts = raw.split(':', limit = 2)
+        val action = GestureAction.entries.firstOrNull { it.name == parts[0] } ?: GestureAction.None
+        return GestureBinding(action, parts.getOrNull(1))
+    }
+
+    fun setGesture(g: Gesture, b: GestureBinding) {
+        prefs.edit().putString("gesture.${g.name}", b.action.name + (b.appKey?.let { ":$it" } ?: "")).apply()
+    }
+
     fun folderNames(): List<String> = prefs.getString("folders", "")!!.split("\n").filter { it.isNotEmpty() }
 
     /** folder name -> member app keys */
