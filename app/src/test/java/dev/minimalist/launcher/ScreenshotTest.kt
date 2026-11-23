@@ -391,6 +391,23 @@ class ScreenshotTest {
         rule.onNodeWithText("Save").performClick()
         assertEquals("Calendar" to "Dates", renamed)
     }
+    @Test fun theRenameSheetRisesAboveTheKeyboard() {
+        var view: android.view.View? = null
+        rule.setContent { view = androidx.compose.ui.platform.LocalView.current; MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base, LauncherActions()) } }
+        rule.mainClock.advanceTimeBy(300)
+        longPress("Calendar")
+        rule.mainClock.advanceTimeBy(600)
+        rule.onNodeWithText("Rename app").performClick()
+        rule.mainClock.advanceTimeBy(600)
+        val before = rule.onNodeWithText("Save").fetchSemanticsNode().boundsInRoot.bottom
+        val keyboard = androidx.core.graphics.Insets.of(0, 0, 0, 800)
+        val insets = androidx.core.view.WindowInsetsCompat.Builder().setInsets(androidx.core.view.WindowInsetsCompat.Type.ime(), keyboard).setVisible(androidx.core.view.WindowInsetsCompat.Type.ime(), true).build()
+        rule.runOnUiThread { androidx.core.view.ViewCompat.dispatchApplyWindowInsets(view!!, insets) }
+        rule.mainClock.advanceTimeBy(600)
+        val after = rule.onNodeWithText("Save").fetchSemanticsNode().boundsInRoot.bottom
+        assertTrue("the Save button should move up by about the keyboard height: $before -> $after", before - after > 700f)
+    }
+
     @Test fun renameRowScreenshot() = foldShot("rename_row", inDrawer) { longPress("Camera") }
     @Test fun renameScreenshot() = foldShot("rename", inDrawer) { longPress("Camera"); rule.onNodeWithText("Rename app").performClick() }
 

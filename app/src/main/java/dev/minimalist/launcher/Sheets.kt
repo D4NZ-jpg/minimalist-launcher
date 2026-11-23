@@ -34,6 +34,11 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+/** Keeps content above the navigation bar, and above the keyboard while it is open. */
+@Composable
+internal fun Modifier.imeOrNavigationPadding(): Modifier =
+    windowInsetsPadding(WindowInsets.ime.union(WindowInsets.navigationBars))
+
 private val SheetBg = Color(0xFF161616)
 private val Chip = Color(0xFF262626)
 
@@ -57,7 +62,7 @@ private fun SheetHost(onDismiss: () -> Unit, content: @Composable ColumnScope.()
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(SheetBg)
                     .pointerInput(Unit) { detectTapGestures { } }
-                    .navigationBarsPadding().heightIn(max = 600.dp).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp),
+                    .imeOrNavigationPadding().heightIn(max = 600.dp).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp),
                 content = content,
             )
         }

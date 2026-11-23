@@ -311,11 +311,11 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
                             SwipeDir.Right -> IntOffset((-q * size.width).roundToInt(), 0)
                         }
                     }
-                    .background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)
+                    .background(Bg).statusBarsPadding().imeOrNavigationPadding().padding(horizontal = 16.dp)
             ) { Drawer(s, a, expanded, onAppMenu = { menuFor = it }, onFolderMenu = { folderMenu = it }) }
 
             AnimatedVisibility(s.showSettings, enter = fadeIn(tween(160)), exit = fadeOut(tween(120))) {
-                Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) { SettingsScreen(s, a) }
+                Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().imeOrNavigationPadding().padding(horizontal = 16.dp)) { SettingsScreen(s, a) }
             }
         }
 
@@ -336,13 +336,13 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     }
     pickAppFor?.let { g ->
         BackHandler { pickAppFor = null }
-        Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
+        Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().imeOrNavigationPadding().padding(horizontal = 16.dp)) {
             AppPickerScreen("Open which app?", s.allApps, { it.key == s.gestures[g]?.appKey }, { app -> a.setGesture(g, GestureBinding(GestureAction.LaunchApp, app.key)); pickAppFor = null }) { pickAppFor = null }
         }
     }
     pickFolder?.let { name ->
         BackHandler { pickFolder = null }
-        Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
+        Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().imeOrNavigationPadding().padding(horizontal = 16.dp)) {
             AppPickerScreen("Apps in $name", s.allApps, { app -> s.folders.firstOrNull { it.name == name }?.apps?.any { it.key == app.key } == true }, { a.toggleFolder(it, name) }) { pickFolder = null }
         }
     }
