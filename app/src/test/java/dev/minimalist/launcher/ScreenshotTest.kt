@@ -102,6 +102,21 @@ class ScreenshotTest {
         if (opening) assertEquals(1, rule.onAllNodesWithText("Files").fetchSemanticsNodes().size) else assertTrue(rule.onAllNodesWithText("Search apps").fetchSemanticsNodes().isEmpty())
     }
 
+    /** Both screens move during the transition: home leaves while the list arrives, from opposite sides of rest. */
+    @Test fun bothScreensMoveWhileOpening() {
+        var drawer by mutableStateOf(false)
+        rule.mainClock.autoAdvance = false
+        rule.setContent { MaterialTheme(colorScheme = darkColorScheme()) { LauncherContent(base.copy(showDrawer = drawer, swipe = SwipeDir.Left), LauncherActions()) } }
+        rule.mainClock.advanceTimeBy(1000)
+        val rest = rule.onNodeWithText("Files").fetchSemanticsNode().positionInRoot.x
+        drawer = true
+        repeat(8) { rule.mainClock.advanceTimeByFrame(); rule.onAllNodesWithText("Files").fetchSemanticsNodes() }
+        val xs = rule.onAllNodesWithText("Files").fetchSemanticsNodes().map { it.positionInRoot.x }
+        assertEquals(2, xs.size)
+        assertTrue("home should have moved left of rest ($rest): $xs", xs.min() < rest - 20)
+        assertTrue("list should still be right of rest ($rest): $xs", xs.max() > rest + 20)
+    }
+
     @Test fun openingAnimatesBetweenHomeAndList() = checkTransition(true)
     @Test fun closingAnimatesBetweenListAndHome() = checkTransition(false)
 

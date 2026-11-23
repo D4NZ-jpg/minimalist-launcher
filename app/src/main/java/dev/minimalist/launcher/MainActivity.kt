@@ -212,15 +212,16 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             AnimatedContent(
                 targetState = screen, label = "screen",
                 transitionSpec = {
-                    val t = when {
+                    val move = tween<IntOffset>(320, easing = FastOutSlowInEasing)
+                    when {
+                        // Both screens travel together, like a push: the list arrives from the swipe side
+                        // while home leaves the same way.
                         initialState == Screen.Home && targetState == Screen.Drawer ->
-                            (slideIntoContainer(openDir, tween(320, easing = FastOutSlowInEasing)) + fadeIn(tween(200))) togetherWith fadeOut(tween(220))
+                            slideIntoContainer(openDir, move) togetherWith slideOutOfContainer(openDir, move)
                         initialState == Screen.Drawer && targetState == Screen.Home ->
-                            fadeIn(tween(220)) togetherWith (slideOutOfContainer(closeDir, tween(280, easing = FastOutSlowInEasing)) + fadeOut(tween(280)))
+                            slideIntoContainer(closeDir, move) togetherWith slideOutOfContainer(closeDir, move)
                         else -> fadeIn(tween(160)) togetherWith fadeOut(tween(120))
                     }
-                    t.targetContentZIndex = if (targetState == Screen.Drawer) 1f else 0f
-                    t
                 },
             ) { sc ->
                 Box(Modifier.fillMaxSize().background(Bg)) {
