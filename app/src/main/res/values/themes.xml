@@ -1,9 +1,27 @@
 <resources>
     <style name="Theme.Launcher" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowShowWallpaper">true</item>
-        <item name="android:windowBackground">@android:color/transparent</item>
+        <!-- The app paints its own near-black background, so the window starts out the same colour and does not
+             ask for the wallpaper. Asking for it makes Android play its zoom/wallpaper transition on return. -->
+        <item name="android:windowBackground">@color/launcher_background</item>
+        <item name="android:windowAnimationStyle">@style/LauncherWindowAnimation</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+
+    <!-- Coming back to the launcher is a short fade; opening an app leaves the launcher where it is. -->
+    <style name="LauncherWindowAnimation" parent="@android:style/Animation.Activity">
+        <item name="android:activityOpenEnterAnimation">@anim/launcher_fade_in</item>
+        <item name="android:activityOpenExitAnimation">@anim/launcher_hold</item>
+        <item name="android:activityCloseEnterAnimation">@anim/launcher_fade_in</item>
+        <item name="android:activityCloseExitAnimation">@anim/launcher_hold</item>
+        <item name="android:taskOpenEnterAnimation">@anim/launcher_fade_in</item>
+        <item name="android:taskOpenExitAnimation">@anim/launcher_hold</item>
+        <item name="android:taskCloseEnterAnimation">@anim/launcher_fade_in</item>
+        <item name="android:taskCloseExitAnimation">@anim/launcher_hold</item>
+        <item name="android:taskToFrontEnterAnimation">@anim/launcher_fade_in</item>
+        <item name="android:taskToFrontExitAnimation">@anim/launcher_hold</item>
+        <item name="android:taskToBackEnterAnimation">@anim/launcher_fade_in</item>
+        <item name="android:taskToBackExitAnimation">@anim/launcher_hold</item>
     </style>
 </resources>

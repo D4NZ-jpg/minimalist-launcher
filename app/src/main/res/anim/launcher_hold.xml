@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Keeps the launcher in place (no movement or fade) while another app opens over it. -->
+<alpha xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="140"
+    android:fromAlpha="1.0"
+    android:toAlpha="1.0" />
