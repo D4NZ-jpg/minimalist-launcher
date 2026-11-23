@@ -115,6 +115,7 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
                 ),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { a.newFolder(app, name); creating = false; name = "" }),
+                supportingText = { Text("${app.label} will be added to this folder.", color = Dim) },
                 trailingIcon = { TextButton({ a.newFolder(app, name); creating = false; name = "" }, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) { Text("Create") } },
             )
         }
@@ -130,9 +131,9 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
     val i = s.homeFolders.indexOfFirst { it.name == folder }
     SheetHost(onDismiss) {
         SheetTitle(folder)
-        ToggleRow("Show on home", i >= 0) { a.toggleHomeFolder(folder) }
+        ToggleRow("Show on home screen", i >= 0) { a.toggleHomeFolder(folder) }
         Text(
-            if (i >= 0) "This folder is on the home screen. Drag it there to reorder." else "Folders stay in the app list until you show them on home.",
+            if (i >= 0) "Shown on the home screen. Long-press and drag it there to reorder." else "The folder always stays in the app list. Turn this on to also pin it to the home screen.",
             color = Dim, fontSize = 13.sp, modifier = Modifier.padding(bottom = 4.dp),
         )
         Text(

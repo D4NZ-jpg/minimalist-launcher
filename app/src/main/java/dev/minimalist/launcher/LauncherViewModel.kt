@@ -71,7 +71,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
 
     private fun updateResults() {
         val q = query.trim().lowercase()
-        results = if (q.isEmpty()) all.filter { it.key !in hiddenKeys && (showFolderedApps || it.key !in folderedKeys) }
+        results = if (q.isEmpty()) visibleApps(all, hiddenKeys, folderedKeys, showFolderedApps)
         else all.filter { it.label.lowercase().contains(q) }
             .sortedWith(compareBy({ !it.label.lowercase().startsWith(q) }, { it.label.lowercase() }))
     }

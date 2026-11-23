@@ -54,7 +54,7 @@ class ScreenshotTest {
         dock = listOf("Phone", "Camera", "Maps").map { n -> app(n).also { it.icon = icon(n) } },
         folders = listOf(FolderUi("Money", listOf(app("Wallet"))), FolderUi("Tools", listOf(app("Timer"), app("Notes")))),
         homeFolders = listOf(FolderUi("Tools", listOf(app("Timer"), app("Notes")))),
-        results = all,
+        results = visibleApps(all, emptySet(), setOf(app("Wallet").key, app("Timer").key, app("Notes").key), false),
     )
 
     private fun shot(name: String, s: LauncherState, pick: Boolean = false) {
@@ -169,8 +169,8 @@ class ScreenshotTest {
     private fun longPress(text: String) { rule.onNodeWithText(text).performTouchInput { down(center); advanceEventTime(700); up() }; rule.waitForIdle() }
     private val inDrawer get() = base.copy(showDrawer = true)
 
-    @Test fun foldAppSheet() = foldShot("fold_app_sheet", inDrawer) { longPress("Wallet") }
-    @Test fun foldNewFolder() = foldShot("fold_new_folder", inDrawer) { longPress("Wallet"); rule.onNodeWithText("+ New folder").performClick() }
+    @Test fun foldAppSheet() = foldShot("fold_app_sheet", inDrawer) { rule.onNodeWithText("Money").performClick(); longPress("Wallet") }
+    @Test fun foldNewFolder() = foldShot("fold_new_folder", inDrawer) { rule.onNodeWithText("Money").performClick(); longPress("Wallet"); rule.onNodeWithText("+ New folder").performClick() }
     @Test fun foldFolderSheet() = foldShot("fold_folder_sheet", inDrawer) { longPress("Money") }
     @Test fun foldDrawerExpanded() = foldShot("fold_drawer_expanded", inDrawer) { rule.onNodeWithText("Money").performClick(); rule.onNodeWithText("Tools").performClick() }
     @Test fun foldHomeExpanded() = foldShot("fold_home_expanded", base) { rule.onNodeWithText("Tools").performClick() }

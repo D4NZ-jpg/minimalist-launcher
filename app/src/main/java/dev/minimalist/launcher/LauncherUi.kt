@@ -1,5 +1,9 @@
 package dev.minimalist.launcher
 
+/** Apps shown in the main list: not hidden, and (unless the user opted in) not inside any folder. */
+fun visibleApps(all: List<AppEntry>, hidden: Set<String>, foldered: Set<String>, showFoldered: Boolean) =
+    all.filter { it.key !in hidden && (showFoldered || it.key !in foldered) }
+
 data class FolderUi(val name: String, val apps: List<AppEntry>)
 
 data class LauncherState(

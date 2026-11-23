@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
@@ -284,14 +285,15 @@ private fun toggle(list: SnapshotStateList<String>, name: String) { if (!list.re
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White, drag: Modifier? = null, info: String? = null) {
+private fun FolderHeader(name: String, open: Boolean, size: androidx.compose.ui.unit.TextUnit, onToggle: () -> Unit, onMenu: (String) -> Unit, color: Color = Color.White, drag: Modifier? = null, info: String? = null, onMore: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth().then(if (drag != null) Modifier.onTap(name, onToggle).then(drag) else Modifier.combinedClickable(onClick = onToggle, onLongClick = { onMenu(name) })).padding(vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(if (open) Icons.Default.KeyboardArrowDown else Icons.Default.KeyboardArrowRight, null, tint = color, modifier = Modifier.padding(horizontal = 8.dp))
         Text(name, color = color, fontSize = size, modifier = Modifier.weight(1f))
-        if (info != null) Text(info, color = Dim, fontSize = 13.sp, modifier = Modifier.padding(end = 8.dp))
+        if (info != null) Text(info, color = Dim, fontSize = 13.sp, modifier = Modifier.padding(end = 4.dp))
+        if (onMore != null) IconButton(onMore, Modifier.size(36.dp)) { Icon(Icons.Default.MoreVert, "Folder options", tint = Dim, modifier = Modifier.size(20.dp)) }
     }
 }
 
@@ -344,7 +346,7 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
         Row(Modifier.weight(1f)) {
             LazyColumn(Modifier.weight(1f), state = listState) {
                 if (!searching) s.folders.forEach { f ->
-                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim, info = "${f.apps.size}" + if (s.homeFolders.any { it.name == f.name }) " · on home" else "") }
+                    item(key = "f:${f.name}") { FolderHeader(f.name, f.name in expanded, sz(18), { toggle(expanded, f.name) }, onFolderMenu, Dim, info = "${f.apps.size}" + if (s.homeFolders.any { it.name == f.name }) " · on home" else "", onMore = { onFolderMenu(f.name) }) }
                     if (f.name in expanded) {
                         items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { Text("No apps yet. Long-press an app and tick this folder.", color = Color.Gray, modifier = Modifier.padding(start = 48.dp, bottom = 8.dp)) }
