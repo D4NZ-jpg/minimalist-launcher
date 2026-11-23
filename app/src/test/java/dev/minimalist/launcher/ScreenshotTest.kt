@@ -52,7 +52,7 @@ class ScreenshotTest {
         return b.asImageBitmap()
     }
 
-    private val all = listOf("Alarms", "Books", "Calculator", "Calendar", "Camera", "Wallet", "Clock", "Compass", "Files", "Maps", "Music", "Notes", "Podcasts", "Phone", "Photos", "Recorder", "Stopwatch", "Timer", "Translate", "Weather", "Tasks", "Contacts", "Messages", "Videos").map(::app)
+    private val all = listOf("Alarms", "Books", "Calculator", "Calendar", "Camera", "Clock", "Compass", "Contacts", "Files", "Maps", "Messages", "Music", "Notes", "Phone", "Photos", "Podcasts", "Recorder", "Stopwatch", "Tasks", "Timer", "Translate", "Videos", "Wallet", "Weather").map(::app)
     private val base = LauncherState(
         time = "10:43 AM", date = "Sunday, 22nd November", battery = 80, usage = "Today's Usage: 1h 34m",
         favourites = listOf("Messages", "Contacts", "Calendar", "Music", "Weather", "Compass", "Files").map(::app),
@@ -265,7 +265,7 @@ class ScreenshotTest {
         }
         rule.mainClock.advanceTimeBy(1500); filesXs()
         assertTrue(called(true))
-        assertTrue("home no longer composed once the list has arrived", rule.onAllNodesWithText("Messages").fetchSemanticsNodes().isEmpty())
+        assertTrue("home no longer composed once the list has arrived", rule.onAllNodesWithText("Sunday, 22nd November").fetchSemanticsNodes().isEmpty())
     }
 
     @Test fun aQuickFlickOpensEvenFromAShortDistance() {
@@ -290,7 +290,7 @@ class ScreenshotTest {
         }
         rule.mainClock.advanceTimeBy(1500); filesXs()
         assertTrue(called(false))
-        assertTrue(rule.onAllNodesWithText("Messages").fetchSemanticsNodes().isNotEmpty())
+        assertTrue(rule.onAllNodesWithText("Sunday, 22nd November").fetchSemanticsNodes().isNotEmpty())
     }
 
     @Test fun openingAnimatesBetweenHomeAndList() = checkTransition(true)
