@@ -419,8 +419,10 @@ internal fun AppPickerScreen(title: String, apps: List<AppEntry>, isChecked: (Ap
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Back", tint = Color.White) }
-            Text(title, color = Color.White, fontSize = 22.sp)
+            Text(title, color = Color.White, fontSize = 22.sp, modifier = Modifier.weight(1f))
+            TextButton(onBack, colors = ButtonDefaults.textButtonColors(contentColor = Color.White)) { Text("Done") }
         }
+        Text("Tap an app to add or remove it. Changes save immediately.", color = Dim, fontSize = 13.sp, modifier = Modifier.padding(start = 16.dp, bottom = 4.dp))
         TextField(
             value = filter, onValueChange = { filter = it }, singleLine = true, shape = RoundedCornerShape(50),
             placeholder = { Text("Filter apps") }, leadingIcon = { Icon(Icons.Default.Search, null) },
@@ -444,8 +446,10 @@ internal fun AppPickerScreen(title: String, apps: List<AppEntry>, isChecked: (Ap
 @Composable
 private fun EmptyFolderHint(folder: String) {
     val addApps = LocalAddApps.current
-    Text("No apps yet. Add apps", color = Color.White.copy(alpha = 0.75f), fontSize = 14.sp,
-        modifier = Modifier.padding(start = 48.dp).clickable { addApps(folder) }.padding(vertical = 8.dp))
+    Column(Modifier.padding(start = 48.dp, bottom = 4.dp)) {
+        Text("No apps yet.", color = Color.Gray, fontSize = 14.sp)
+        Text("+ Add apps", color = Color.White, fontSize = 15.sp, modifier = Modifier.clickable { addApps(folder) }.padding(vertical = 8.dp))
+    }
 }
 
 @Composable

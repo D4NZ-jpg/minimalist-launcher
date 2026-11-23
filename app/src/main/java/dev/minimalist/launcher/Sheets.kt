@@ -75,9 +75,12 @@ private fun SheetLabel(text: String) {
 }
 
 @Composable
-private fun ToggleRow(label: String, on: Boolean, onToggle: () -> Unit) {
+private fun ToggleRow(label: String, on: Boolean, subtitle: String? = null, onToggle: () -> Unit) {
     Row(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            Text(label, color = Color.White, fontSize = 16.sp)
+            if (subtitle != null) Text(subtitle, color = Dim, fontSize = 13.sp)
+        }
         Switch(on, { onToggle() }, colors = monoSwitchColors())
     }
 }
@@ -91,7 +94,10 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
         SheetTitle(app.label)
         ToggleRow("Show on home", favIndex >= 0) { a.toggleFavourite(app) }
         ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
-        ToggleRow("Hide from main app list", app.key in s.hiddenKeys) { a.toggleHidden(app) }
+        ToggleRow(
+            "Hide from main app list", app.key in s.hiddenKeys,
+            subtitle = if (!s.showFolderedApps && s.folders.any { f -> f.apps.any { it.key == app.key } }) "Already left out while it is in a folder" else null,
+        ) { a.toggleHidden(app) }
         SheetLabel("Add to folders")
         s.folders.forEach { f ->
             val member = f.apps.any { it.key == app.key }
