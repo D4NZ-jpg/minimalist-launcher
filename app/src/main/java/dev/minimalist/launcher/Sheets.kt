@@ -75,13 +75,13 @@ private fun SheetLabel(text: String) {
 }
 
 @Composable
-private fun ToggleRow(label: String, on: Boolean, subtitle: String? = null, onToggle: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+private fun ToggleRow(label: String, on: Boolean, subtitle: String? = null, enabled: Boolean = true, onToggle: () -> Unit) {
+    Row(Modifier.fillMaxWidth().clickable(enabled = enabled, onClick = onToggle).padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            Text(label, color = Color.White, fontSize = 16.sp)
+            Text(label, color = if (enabled) Color.White else Dim, fontSize = 16.sp)
             if (subtitle != null) Text(subtitle, color = Dim, fontSize = 13.sp)
         }
-        Switch(on, { onToggle() }, colors = monoSwitchColors())
+        Switch(on, { onToggle() }, enabled = enabled, colors = monoSwitchColors())
     }
 }
 
@@ -90,13 +90,17 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
     val favIndex = s.favourites.indexOfFirst { it.key == app.key }
     var creating by remember { mutableStateOf(false) }
     var name by remember { mutableStateOf("") }
+    val inFolder = s.folders.any { f -> f.apps.any { it.key == app.key } }
+    // While an app sits in a folder it is already out of the main list, so hiding adds nothing (unless it is already hidden).
+    val redundantHide = inFolder && !s.showFolderedApps && app.key !in s.hiddenKeys
     SheetHost(onDismiss) {
         SheetTitle(app.label)
         ToggleRow("Show on home", favIndex >= 0) { a.toggleFavourite(app) }
         ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
         ToggleRow(
             "Hide from main app list", app.key in s.hiddenKeys,
-            subtitle = if (!s.showFolderedApps && s.folders.any { f -> f.apps.any { it.key == app.key } }) "Already left out while it is in a folder" else null,
+            subtitle = if (redundantHide) "Not needed: it is already left out of the list because it is in a folder" else null,
+            enabled = !redundantHide,
         ) { a.toggleHidden(app) }
         SheetLabel("Add to folders")
         s.folders.forEach { f ->
@@ -162,3 +166,27 @@ internal fun monoSwitchColors() = SwitchDefaults.colors(
 internal fun monoCheckboxColors() = CheckboxDefaults.colors(
     checkedColor = Color.White, uncheckedColor = Color(0xFF8A8A8A), checkmarkColor = Color.Black,
 )
+
+/** Names a new folder; the caller opens the app picker for it afterwards. */
+@Composable
+fun NewFolderSheet(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    SheetHost(onDismiss) {
+        SheetTitle("New folder")
+        TextField(
+            value = name, onValueChange = { name = it }, singleLine = true, shape = RoundedCornerShape(50),
+            placeholder = { Text("Folder name") }, modifier = Modifier.fillMaxWidth(),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Chip, unfocusedContainerColor = Chip,
+                focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
+            ),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = { if (name.isNotBlank()) onCreate(name) }),
+            supportingText = { Text("You pick its apps next.", color = Dim) },
+        )
+        Text(
+            "Create", color = if (name.isBlank()) Dim else Color.White, fontSize = 16.sp,
+            modifier = Modifier.padding(top = 8.dp).clickable(enabled = name.isNotBlank()) { onCreate(name) }.padding(vertical = 8.dp),
+        )
+    }
+}

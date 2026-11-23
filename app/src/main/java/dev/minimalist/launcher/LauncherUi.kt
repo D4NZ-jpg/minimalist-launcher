@@ -21,7 +21,7 @@ class LauncherActions(
     val launch: (AppEntry) -> Unit = {}, val toggleFavourite: (AppEntry) -> Unit = {}, val toggleDock: (AppEntry) -> Unit = {},
     val toggleHidden: (AppEntry) -> Unit = {}, val uninstall: (AppEntry) -> Unit = {},
     val toggleFolder: (AppEntry, String) -> Unit = { _, _ -> }, val newFolder: (AppEntry, String) -> Unit = { _, _ -> },
-    val deleteFolder: (String) -> Unit = {}, val toggleDnd: () -> Unit = {},
+    val deleteFolder: (String) -> Unit = {}, val createFolder: (String) -> Unit = {}, val toggleDnd: () -> Unit = {},
     val openUsageAccess: () -> Unit = {}, val openDndAccess: () -> Unit = {}, val openDefaultLauncher: () -> Unit = {},
     val set24h: (Boolean) -> Unit = {}, val setSwipe: (SwipeDir) -> Unit = {}, val moveFavourite: (AppEntry, Int) -> Unit = { _, _ -> },
     val toggleHomeFolder: (String) -> Unit = {}, val moveHomeFolder: (String, Int) -> Unit = { _, _ -> },

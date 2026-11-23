@@ -83,6 +83,7 @@ class LauncherViewModel(private val app: Application) : AndroidViewModel(app) {
     fun uninstall(a: AppEntry) = repo.uninstall(a)
     fun toggleFolder(a: AppEntry, name: String) { repo.toggleFolder(a.key, name); refresh() }
     fun newFolder(a: AppEntry, name: String) { repo.createFolder(name)?.let { repo.addToFolder(a.key, it) }; refresh() }
+    fun createFolder(name: String) { repo.createFolder(name); refresh() }
     fun deleteFolder(name: String) { repo.deleteFolder(name); refresh() }
     fun moveFavourite(a: AppEntry, delta: Int) { repo.moveFavourite(a.key, delta); refresh() }
     fun toggleHomeFolder(name: String) { repo.setHomeFolder(name, name !in homeFolders.map { it.name }); refresh() }

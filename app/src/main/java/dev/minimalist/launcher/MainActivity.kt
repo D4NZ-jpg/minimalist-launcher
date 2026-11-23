@@ -91,6 +91,7 @@ private enum class Screen { Home, Drawer, Settings }
 internal val Bg = Color(0xFF0B0B0B)
 private val LocalTextScale = compositionLocalOf { 1f }
 private val LocalAddApps = staticCompositionLocalOf<(String) -> Unit> { {} }
+private val LocalNewFolder = staticCompositionLocalOf<() -> Unit> { {} }
 @Composable private fun sz(v: Int) = (v * LocalTextScale.current).sp
 
 internal val Dim = Color.White.copy(alpha = 0.7f)
@@ -154,7 +155,7 @@ fun LauncherScreen(vm: LauncherViewModel) {
         showDrawer = { vm.showDrawer = it }, showSettings = { vm.showSettings = it }, query = vm::onQuery,
         launch = vm::launch, toggleFavourite = vm::toggleFavourite, toggleDock = vm::toggleDock,
         toggleHidden = vm::toggleHidden, uninstall = vm::uninstall, toggleFolder = vm::toggleFolder, newFolder = vm::newFolder,
-        deleteFolder = vm::deleteFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
+        deleteFolder = vm::deleteFolder, createFolder = vm::createFolder, toggleDnd = vm::toggleDnd, openUsageAccess = vm::openUsageAccess,
         openDndAccess = vm::openDndAccess, openDefaultLauncher = vm::openDefaultLauncher, set24h = vm::set24h, setSwipe = vm::chooseSwipe, setTextSize = vm::chooseTextSize, moveFavourite = vm::moveFavourite, toggleHomeFolder = vm::toggleHomeFolder,
         moveHomeFolder = vm::moveHomeFolder, setShowFolderedApps = vm::chooseShowFoldered, setShowSwipeHint = vm::chooseShowHint,
     )
@@ -167,6 +168,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     var menuFor by remember { mutableStateOf<AppEntry?>(null) }
     var folderMenu by remember { mutableStateOf<String?>(null) }
     var pickFolder by remember { mutableStateOf<String?>(null) }
+    var creatingFolder by remember { mutableStateOf(false) }
     val expanded = remember { mutableStateListOf<String>() }
 
     BackHandler(enabled = s.showSettings) { a.showSettings(false) }
@@ -211,7 +213,7 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
             SwipeDir.Left -> AnimatedContentTransitionScope.SlideDirection.Right
             SwipeDir.Right -> AnimatedContentTransitionScope.SlideDirection.Left
         }
-        CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }) {
+        CompositionLocalProvider(LocalTextScale provides s.textSize.scale, LocalAddApps provides { pickFolder = it }, LocalNewFolder provides { creatingFolder = true }) {
             AnimatedContent(
                 targetState = screen, label = "screen",
                 transitionSpec = {
@@ -245,10 +247,11 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     }
     menuFor?.let { app -> AppSheet(app, s, a) { menuFor = null } }
     folderMenu?.let { name -> FolderSheet(name, s, a, onDismiss = { folderMenu = null }, onAddApps = { pickFolder = name; folderMenu = null }) }
+    if (creatingFolder) NewFolderSheet(onCreate = { n -> a.createFolder(n); pickFolder = cleanFolderName(n); creatingFolder = false }, onDismiss = { creatingFolder = false })
     pickFolder?.let { name ->
         BackHandler { pickFolder = null }
         Box(Modifier.fillMaxSize().background(Bg).statusBarsPadding().navigationBarsPadding().padding(horizontal = 16.dp)) {
-            AppPickerScreen("Add apps to $name", s.allApps, { app -> s.folders.firstOrNull { it.name == name }?.apps?.any { it.key == app.key } == true }, { a.toggleFolder(it, name) }) { pickFolder = null }
+            AppPickerScreen("Apps in $name", s.allApps, { app -> s.folders.firstOrNull { it.name == name }?.apps?.any { it.key == app.key } == true }, { a.toggleFolder(it, name) }) { pickFolder = null }
         }
     }
     }
@@ -359,6 +362,10 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
                         items(f.apps, key = { "fa:${f.name}:${it.key}" }) { app -> AppRow(app, sz(17), 48.dp, a.launch, onAppMenu) }
                         if (f.apps.isEmpty()) item(key = "fe:${f.name}") { EmptyFolderHint(f.name) }
                     }
+                }
+                if (!searching) item(key = "new-folder") {
+                    val newFolder = LocalNewFolder.current
+                    Text("+ New folder", color = Dim, fontSize = sz(15), modifier = Modifier.fillMaxWidth().clickable { newFolder() }.padding(start = 48.dp, top = 6.dp, bottom = 10.dp))
                 }
                 items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
             }
