@@ -365,7 +365,7 @@ private fun Drawer(s: LauncherState, a: LauncherActions, expanded: SnapshotState
                 }
                 if (!searching) item(key = "new-folder") {
                     val newFolder = LocalNewFolder.current
-                    Text("+ New folder", color = Dim, fontSize = sz(15), modifier = Modifier.fillMaxWidth().clickable { newFolder() }.padding(start = 48.dp, top = 6.dp, bottom = 10.dp))
+                    Text("+ New folder", color = Dim, fontSize = sz(15), modifier = Modifier.fillMaxWidth().clickable { newFolder() }.padding(start = 12.dp, top = 8.dp, bottom = 12.dp))
                 }
                 items(s.results, key = { it.key }) { app -> AppRow(app, sz(18), 8.dp, a.launch, onAppMenu) }
             }

@@ -99,7 +99,7 @@ fun AppSheet(app: AppEntry, s: LauncherState, a: LauncherActions, onDismiss: () 
         ToggleRow("Show in dock", s.dock.any { it.key == app.key }) { a.toggleDock(app) }
         ToggleRow(
             "Hide from main app list", app.key in s.hiddenKeys,
-            subtitle = if (redundantHide) "Not needed: it is already left out of the list because it is in a folder" else null,
+            subtitle = if (redundantHide) "Shown inside its folders only" else null,
             enabled = !redundantHide,
         ) { a.toggleHidden(app) }
         SheetLabel("Add to folders")
@@ -148,7 +148,7 @@ fun FolderSheet(folder: String, s: LauncherState, a: LauncherActions, onDismiss:
         )
         Text("Add apps…", color = Color.White, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp).clickable(onClick = onAddApps).padding(vertical = 8.dp))
         Text(
-            "Delete folder", color = Dim, fontSize = 16.sp,
+            "Delete folder (apps stay installed)", color = Dim, fontSize = 16.sp,
             modifier = Modifier.padding(top = 12.dp).clickable { a.deleteFolder(folder); onDismiss() }.padding(vertical = 8.dp),
         )
     }
@@ -185,8 +185,10 @@ fun NewFolderSheet(onCreate: (String) -> Unit, onDismiss: () -> Unit) {
             supportingText = { Text("You pick its apps next.", color = Dim) },
         )
         Text(
-            "Create", color = if (name.isBlank()) Dim else Color.White, fontSize = 16.sp,
-            modifier = Modifier.padding(top = 8.dp).clickable(enabled = name.isNotBlank()) { onCreate(name) }.padding(vertical = 8.dp),
+            "Create and choose apps", color = if (name.isBlank()) Dim else Color.Black, fontSize = 15.sp,
+            modifier = Modifier.padding(top = 12.dp).clip(RoundedCornerShape(50))
+                .background(if (name.isBlank()) Chip else Color.White)
+                .clickable(enabled = name.isNotBlank()) { onCreate(name) }.padding(horizontal = 18.dp, vertical = 10.dp),
         )
     }
 }
