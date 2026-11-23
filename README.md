@@ -4,50 +4,49 @@
 
 # Minimalist Launcher
 
-A calm Android home screen: a clock, a short list of the apps you actually use, and everything else one swipe away.
+A text-only Android home screen: a clock, a short list of favorite apps, and everything else one swipe away.
 
 [Features](#features) · [Install](#install) · [Gestures](#gestures) · [Build](#build) · [ADB control](#control-it-over-adb)
 
 </div>
 
-Minimalist Launcher replaces the stock home screen with plain text, a near-black background and no icons except a small dock. It is built to make you more conscious of your phone, not to grab your attention. It has no internet permission, no ads and no analytics.
+Minimalist Launcher replaces the stock home screen with plain text on a near-black background. The only icons are in a small dock. It uses Kotlin and Jetpack Compose.
 
 > [!NOTE]
-> The app is called **Minimal** on the device. Android 8.0 (API 26) or newer is required.
+> The app is called **Minimal** on the device. It needs Android 8.0 (API 26) or newer.
 
 ## Features
 
-- **Home screen:** clock, date, battery, your favourite apps as a text list, folders you choose to pin, today's screen time, and a dock of up to five apps.
-- **App list:** a search bar, every app in alphabetical order, folders at the top, and a side strip (A–Z, plus a folder shortcut) you can slide along to jump.
-- **Folders:** an app can be in several folders. Only one folder is open at a time. Apps in a folder leave the main list by default (a setting brings them back).
-- **Drag to reorder:** long-press a home row and drag it to a new place.
-- **Rename and hide:** give any app your own name (search still matches the original), or hide it from the list.
-- **Gestures:** assign actions to swipes, double tap and long press. See [Gestures](#gestures).
-- **Text size and 12/24-hour clock**, plus a first-launch prompt to become your default home app.
+- **Home screen:** clock, date, battery, favorite apps as a text list, pinned folders, today's screen time, and a dock of up to five apps.
+- **App list:** a search bar, all apps in alphabetical order, folders at the top, and an A to Z side strip with a folder shortcut.
+- **Folders:** an app can be in several folders. One folder is open at a time. An app in a folder leaves the main list unless you change this in Settings.
+- **Reorder:** long-press a home row and drag it.
+- **Rename and hide:** give an app your own name. Search also matches the original name.
+- **Gestures:** assign an action to each swipe, to double tap, and to long press.
+- **Settings:** text size, and a 12-hour or 24-hour clock.
 
-Long-press any app or folder for its actions: add to or remove from home, dock and folders, rename, hide and uninstall.
+Long-press an app to add it to or remove it from the home screen, the dock, or a folder. The same menu renames, hides, and uninstalls the app. Long-press a folder to pin it to the home screen, add apps, or delete it.
 
 ## Install
 
-[Build the APK](#build), copy it to your phone and open it. Android asks you to allow installs from the app you opened it with.
-
-After installing, press Home and choose **Minimal** as your home app, or accept the prompt on first launch.
+1. [Build the APK](#build).
+2. Copy it to the phone and open it.
+3. Allow installs from the app that opened it.
+4. Press Home and choose **Minimal** as the home app. A prompt also appears on first launch.
 
 ### Permissions
-
-Everything below is optional. The launcher works without any of it.
 
 | Permission | Used for |
 | --- | --- |
 | Usage access | The "Today's Usage" line on the home screen |
 | Do Not Disturb access | The moon button in the app list |
-| Accessibility service ("Minimal gestures") | Locking the screen with a gesture, and a backup for opening notifications |
+| Accessibility service ("Minimal gestures") | Locking the screen with a gesture, and a backup for opening notifications. It does not read the screen. |
 
-The accessibility service reads nothing from the screen. It only asks Android to lock the screen or open the notification shade. Each permission is switched on from Settings → Permissions.
+Turn each permission on in Settings → Permissions.
 
 ## Gestures
 
-Settings → Gestures lets you choose an action for each gesture on the home screen. One swipe direction always opens the app list; you pick which. The others are free.
+Settings → Gestures sets the action for each gesture on the home screen. One swipe direction always opens the app list. You choose which one. The other directions are free.
 
 | Gesture | Default |
 | --- | --- |
@@ -55,10 +54,7 @@ Settings → Gestures lets you choose an action for each gesture on the home scr
 | Long press on empty space | Open launcher settings |
 | Double tap, and the two free swipe directions | Do nothing |
 
-Available actions: open the notifications or quick settings, search apps, lock the screen, toggle the flashlight, toggle Do Not Disturb, open launcher settings, or open an app of your choice.
-
-> [!TIP]
-> Dragging the app list open follows your finger and finishes from where you let go. A quick flick opens it from a short distance.
+Available actions: open notifications, open quick settings, search apps, lock the screen, toggle the flashlight, toggle Do Not Disturb, open launcher settings, or open an app you choose.
 
 ## Build
 
@@ -74,29 +70,27 @@ echo "sdk.dir=$ANDROID_HOME" > local.properties
 ```
 
 > [!NOTE]
-> The release build is optimised with R8 and signed with the debug key, so it can be installed over a debug build. It is meant for personal sideloading, not for publishing.
+> The release build uses R8 and the debug signing key, so it installs over a debug build. Use it for personal installs only.
 
 ### Tests
 
 ```sh
 ./gradlew testDebugUnitTest      # unit and UI tests on the JVM
-./gradlew recordRoborazziDebug   # same tests, and writes screenshots to app/build/screenshots/
+./gradlew recordRoborazziDebug   # same tests, and saves screenshots to app/build/screenshots/
 ```
-
-The UI tests render screens with fake apps using Robolectric and Roborazzi, so no emulator is needed.
 
 ## Control it over ADB
 
-A hidden receiver lets a script or coding agent read and rearrange your layout. It has no UI, and it requires the `DUMP` permission, which only the `adb` shell holds, so other apps cannot call it.
+A hidden receiver reads and changes the layout from the `adb` shell. It has no screen. It requires the `DUMP` permission, which only the `adb` shell holds, so other apps cannot call it.
 
-Read the current layout (apps, favourites, dock, hidden apps, folders, folders on home and custom names):
+Read the layout (apps, favorites, dock, hidden apps, folders, pinned folders, and custom names):
 
 ```sh
 adb shell am broadcast -n dev.minimalist.launcher/.AgentReceiver \
   -a dev.minimalist.launcher.AGENT --es cmd list
 ```
 
-Replace parts of it. Sections you leave out are unchanged, and unknown app keys are dropped and reported:
+Change parts of it. Sections that are not in the plan stay the same. Unknown app keys are dropped and reported:
 
 ```sh
 adb shell am broadcast -n dev.minimalist.launcher/.AgentReceiver \
@@ -115,19 +109,4 @@ adb shell am broadcast -n dev.minimalist.launcher/.AgentReceiver \
 }
 ```
 
-App keys are `package/activity`, exactly as `list` returns them. The reply is in the `data="..."` part of the broadcast result, and the launcher refreshes on its own.
-
-## Project layout
-
-| File | Role |
-| --- | --- |
-| `MainActivity.kt` | Screens: home, app list, settings, and the drag that opens the list |
-| `Sheets.kt`, `Reorder.kt` | Bottom sheets and drag-to-reorder |
-| `LauncherViewModel.kt`, `LauncherUi.kt` | State and the actions the UI can call |
-| `AppRepository.kt` | Installed apps and everything saved: favourites, dock, folders, names, settings |
-| `Gestures.kt`, `SystemActions.kt`, `LockAccessibilityService.kt` | Gesture bindings and what they do |
-| `AgentReceiver.kt`, `AgentApi.kt` | The ADB control channel |
-
-Built with Kotlin and Jetpack Compose.
-
-Created in [T3 Code](https://t3.codes).
+An app key is `package/activity`, as `list` returns it. The reply is in the `data="..."` part of the broadcast result. The launcher refreshes by itself.
