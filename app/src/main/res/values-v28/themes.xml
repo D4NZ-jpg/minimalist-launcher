@@ -1,0 +1,5 @@
+<resources>
+    <style name="Theme.Launcher" parent="@style/BaseLauncherTheme">
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>

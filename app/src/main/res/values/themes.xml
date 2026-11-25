@@ -1,12 +1,13 @@
 <resources>
-    <style name="Theme.Launcher" parent="android:Theme.Material.NoActionBar">
+    <style name="Theme.Launcher" parent="@style/BaseLauncherTheme" />
+
+    <style name="BaseLauncherTheme" parent="android:Theme.Material.NoActionBar">
         <!-- The app paints its own near-black background, so the window starts out the same colour and does not
              ask for the wallpaper. Asking for it makes Android play its zoom/wallpaper transition on return. -->
         <item name="android:windowBackground">@color/launcher_background</item>
         <item name="android:windowAnimationStyle">@style/LauncherWindowAnimation</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
-        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 
     <!-- Coming back to the launcher is a short fade; opening an app leaves the launcher where it is. -->

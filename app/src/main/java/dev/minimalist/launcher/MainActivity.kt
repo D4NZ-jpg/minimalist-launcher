@@ -196,6 +196,8 @@ fun LauncherContent(s: LauncherState, a: LauncherActions) {
     var pickAppFor by remember { mutableStateOf<Gesture?>(null) }
     val expanded = remember { mutableStateListOf<String>() }
 
+    // Keep Back at home from triggering Android's back-to-home transition.
+    BackHandler {}
     BackHandler(enabled = s.showSettings) { a.showSettings(false) }
     BackHandler(enabled = s.showDrawer && !s.showSettings) { a.showDrawer(false) }
 
